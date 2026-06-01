@@ -1,0 +1,98 @@
+{
+  "project_info": {
+    "project_number": "953191066647",
+    "project_id": "alamirat-photo",
+    "storage_bucket": "alamirat-photo.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:953191066647:android:0730c6d0c4c0bd4584c052",
+        "android_client_info": {
+          "package_name": "com.example.alamirat"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "953191066647-akj1td3picq6tvb7ot2le8jchvc9q8su.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.alamirat",
+            "certificate_hash": "35949b35e47c92e66335aceeeb48b48160e6eeea"
+          }
+        },
+        {
+          "client_id": "953191066647-1fcgifnngo4iv52qnuo69i55mh8gcsre.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVesLR1oS_kWnnSIOEG0y1U3PjuX9MVVo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "953191066647-1fcgifnngo4iv52qnuo69i55mh8gcsre.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "953191066647-og24bora9rhd7jqc0rca3cns28p7hpd9.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.myApp"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:953191066647:android:642d969b216b336984c052",
+        "android_client_info": {
+          "package_name": "com.example.princesses"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "953191066647-g67oglb1g1dv8k5r2n6k1kspiufs60j4.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.princesses",
+            "certificate_hash": "35949b35e47c92e66335aceeeb48b48160e6eeea"
+          }
+        },
+        {
+          "client_id": "953191066647-1fcgifnngo4iv52qnuo69i55mh8gcsre.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCVesLR1oS_kWnnSIOEG0y1U3PjuX9MVVo"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "953191066647-1fcgifnngo4iv52qnuo69i55mh8gcsre.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "953191066647-og24bora9rhd7jqc0rca3cns28p7hpd9.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.myApp"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
