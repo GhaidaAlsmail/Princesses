@@ -50,6 +50,7 @@ final appointmentProvider = Provider<FormGroup>((ref) {
     'rest': FormControl<String>(
       validators: [Validators.required, Validators.pattern(r'^[0-9]+$')],
     ),
+    'hasCoversService': FormControl<bool>(value: false),
     // الحقول الجديدة الخاصة بالخدمات والريف داخل الفورم
     'hasMemoriesCorner': FormControl<bool>(value: false),
     'hasSafesCorner': FormControl<bool>(value: false),
@@ -57,6 +58,11 @@ final appointmentProvider = Provider<FormGroup>((ref) {
     'isRural': FormControl<bool>(value: false),
     'ruralLocation': FormControl<String>(value: ''),
     'transportFees': FormControl<double>(value: 0.0),
+    'customRuralLocation': FormControl<String>(),
+    'customTransportFees': FormControl<String>(value: '0'),
+    'memoriesCornerPrice': FormControl<double>(value: 0.0),
+    'safesCornerPrice': FormControl<double>(value: 0.0),
+    'coversServicePrice': FormControl<double>(value: 0.0),
   });
 });
 

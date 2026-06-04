@@ -28,7 +28,7 @@ class _ContainerCardState extends State<ContainerCard> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Gap(20),
+          const Gap(20),
           // الخدمات المطلوبة مدمجة بشكل منسق داخل الكارد الأساسي
           Text(
             "الخدمات المطلوبة:",
@@ -39,7 +39,7 @@ class _ContainerCardState extends State<ContainerCard> {
               color: Theme.of(context).colorScheme.secondary,
             ),
           ),
-          Gap(15),
+          const Gap(15),
           MyTextField(
             hintText: "الاسم",
             formControlName: "name",
@@ -121,6 +121,21 @@ class _ContainerCardState extends State<ContainerCard> {
               'ركن الأمانات',
               style: TextStyle(fontFamily: "Amiri", fontSize: 20),
             ),
+            activeColor: Theme.of(context).colorScheme.primary,
+            onChanged: (_) => calculateAppointmentPricing(form),
+          ),
+
+          //  خدمة الكفرات الجديدة المضافة مع ربط دالة الحسابات والـ Theme المتناسق
+          ReactiveCheckboxListTile(
+            formControlName: 'hasCoversService',
+            title: const Text(
+              "ركن الكفرات",
+              style: TextStyle(fontFamily: "Amiri", fontSize: 20),
+            ),
+            // secondary: Icon(
+            //   Icons.airline_seat_recline_extra,
+            //   color: Theme.of(context).colorScheme.primary.withAlpha(150),
+            // ),
             activeColor: Theme.of(context).colorScheme.primary,
             onChanged: (_) => calculateAppointmentPricing(form),
           ),

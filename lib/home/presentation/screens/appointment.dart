@@ -118,17 +118,16 @@ class _AppointmentState extends ConsumerState<Appointment> {
                   ),
                   child: HeartRow(),
                 ),
-                const ContainerCard(),
+                const ContainerCard(), // 💡 ملاحظة: الشيك بوكس الجديد يجب وضعه داخل كرت الخدمات هذا أو أسفله مباشرة
                 const Gap(10),
                 const ContainerCardDate(),
                 const Gap(10),
                 const ContainerCardMoney(),
                 const Gap(20),
 
-                // 🌟 السطر الجديد: عرض المبلغ الكامل الإجمالي بشكل ديناميكي ومباشر
+                // 🌟 عرض المبلغ الكامل الإجمالي بشكل ديناميكي ومباشر
                 ReactiveFormConsumer(
                   builder: (context, formGroup, child) {
-                    // جلب القيم الحالية من الحقول لحساب الإجمالي الحقيقي (الباقي + المدفوع)
                     final double rest =
                         double.tryParse(
                           formGroup.control('rest').value?.toString() ?? '0',
@@ -149,9 +148,7 @@ class _AppointmentState extends ConsumerState<Appointment> {
                         ),
                         margin: const EdgeInsets.only(bottom: 15),
                         decoration: BoxDecoration(
-                          color: Colors.white, // Theme.of(
-                          //   context,
-                          // ).colorScheme.primary.withOpacity(0.15),
+                          color: Colors.white,
                           borderRadius: BorderRadius.circular(20),
                           border: Border.all(
                             color: Theme.of(
@@ -222,6 +219,13 @@ class _AppointmentState extends ConsumerState<Appointment> {
                             hasSafesCorner:
                                 form.control("hasSafesCorner").value as bool? ??
                                 false,
+
+                            // 🛠️ تثبيت القيمة المضافة لخدمة الكفرات في الموديل عند الإرسال
+                            hasCoversService:
+                                form.control("hasCoversService").value
+                                    as bool? ??
+                                false,
+
                             isRural:
                                 form.control("isRural").value as bool? ?? false,
                             ruralLocation:
@@ -249,12 +253,16 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                   date: DateTime.now(),
                                 ),
                               );
-
-                          await NotificationService().saveNotificationToHistory(
+                          await saveNotificationToHistory(
                             appointment.id.hashCode,
                             "لديك موعد",
                             "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}",
                           );
+                          // await NotificationService().saveNotificationToHistory(
+                          //   appointment.id.hashCode,
+                          //   "لديك موعد",
+                          //   "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}",
+                          // );
 
                           form.reset(
                             value: {
@@ -265,6 +273,11 @@ class _AppointmentState extends ConsumerState<Appointment> {
                               'city':
                                   ref.read(currentUserProvider).value?.city ??
                                   'idleb',
+                              // إعادة تعيين الخيارات لقيمها الافتراضية
+                              'hasMemoriesCorner': false,
+                              'hasSafesCorner': false,
+                              'hasCoversService': false,
+                              'isRural': false,
                             },
                             removeFocus: true,
                           );

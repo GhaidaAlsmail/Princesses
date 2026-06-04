@@ -6,7 +6,7 @@ import 'package:princesses/home/application/check_box_provider.dart';
 import 'package:princesses/home/application/current_user_provider.dart';
 import 'package:princesses/home/application/notification_provider.dart';
 import 'package:princesses/home/domain/appointment_model.dart';
-import 'package:princesses/home/presentation/screens/details_screen.dart'; // 🌟 تأكدي من مسار الاستيراد لشاشة التفاصيل الجديدة
+import 'package:princesses/home/presentation/screens/details_screen.dart';
 import 'package:princesses/home/domain/notifications.dart';
 import 'package:princesses/home/presentation/widgets/transportation_fare_function.dart';
 import 'package:flutter/material.dart';

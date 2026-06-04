@@ -4,8 +4,8 @@ import 'package:princesses/auth/presentation/screens/sign_up_screen.dart';
 import 'package:princesses/core/global_navigator.dart';
 import 'package:princesses/core/presentation/screens/home_page.dart';
 import 'package:princesses/core/screens/splash_screen.dart';
-import 'package:princesses/excel_file/screen/event_import_screen.dart'
-    show EventImportScreen;
+import 'package:princesses/excel_file/screen/attendes_screen.dart';
+import 'package:princesses/excel_file/screen/event_import_screen.dart';
 import 'package:princesses/excel_file/screen/event_list_screen.dart';
 import 'package:princesses/excel_file/screen/qr_screen.dart';
 import 'package:princesses/home/presentation/screens/appointment.dart';
@@ -19,7 +19,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// استخدام Ref العادية المتوافقة مع حزمة flutter_riverpod
 class RouterRefreshNotifier extends ChangeNotifier {
   RouterRefreshNotifier(Ref ref) {
     ref.listen(authNotifierProvider, (_, _) {
@@ -31,10 +30,8 @@ class RouterRefreshNotifier extends ChangeNotifier {
 final router = Provider<GoRouter>((ref) {
   return GoRouter(
     navigatorKey: globalNavigatorKey,
-    initialLocation: "/splash",
-    // initialLocation: '/import-event',
+    initialLocation: "/splash", // سيبدأ هنا دائماً بشكل نظيف
     observers: [BotToastNavigatorObserver()],
-
     refreshListenable: RouterRefreshNotifier(ref),
 
     routes: [
@@ -58,21 +55,19 @@ final router = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         path: '/events',
-        builder: (context, state) => const EventListScreen(), // شاشة الحفلات
+        builder: (context, state) => const EventListScreen(),
       ),
-      // GoRoute(
-      //   path: '/scanner/:eventId', // الـ :eventId تعني بارامتر متغير ديناميكي
-      //   builder: (context, state) {
-      //     // التقاط الـ ID الممرر من الرابط وإرساله لشاشة الماسح فوراً
-      //     final eventId = state.pathParameters['eventId']!;
-      //     return QrScannerScreen(eventId: eventId);
-      //   },
-      // ),
+      GoRoute(
+        path: '/attendees/:eventId',
+        builder: (context, state) {
+          final eventId = state.pathParameters['eventId']!;
+          return AttendeeListScreen(eventId: eventId);
+        },
+      ),
       GoRoute(
         path: '/import-event',
         builder: (context, state) => const EventImportScreen(),
       ),
-
       GoRoute(
         path: '/scanner/:eventId',
         builder: (context, state) {
@@ -95,8 +90,12 @@ final router = Provider<GoRouter>((ref) {
     ],
 
     redirect: (context, state) async {
-      String? userId = ref.read(authNotifierProvider)?.id;
+      // 🌟 الحل السحري: إذا كان المستخدم في شاشة الـ Splash، لا تفعل أي شيء واترك الأنميشن يعمل
+      if (state.fullPath == "/splash") {
+        return null;
+      }
 
+      String? userId = ref.read(authNotifierProvider)?.id;
       final prefs = SharedPreferencesAsync();
       final savedId = await prefs.getString("userId");
 
@@ -104,7 +103,7 @@ final router = Provider<GoRouter>((ref) {
         if (userId == null && (savedId == null || savedId.isEmpty)) {
           return "/";
         } else if (userId == null && savedId != null && savedId.isNotEmpty) {
-          return "/splash";
+          return "/splash"; // سيعود للسبلاش إذا كان هناك كاش لتهيئة البيانات
         } else {
           return "/home";
         }

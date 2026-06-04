@@ -100,6 +100,32 @@ class DetailsAppScreen extends ConsumerWidget {
           ).format(appointment.date);
           final formattedTime = DateFormat('hh:mm a').format(appointment.date);
 
+          // حساب السعر الإجمالي (المدفوع + المتبقي) بشكل ديناميكي
+          // 1. تحويل القيم المادية الأساسية بأمان (سواء كانت نص أو رقم)
+          final double paidAmount =
+              double.tryParse(appointment.paid.toString()) ?? 0.0;
+          final double restAmount =
+              double.tryParse(appointment.rest.toString()) ?? 0.0;
+          final double transport =
+              double.tryParse(appointment.transportFees.toString()) ?? 0.0;
+
+          // 2. جلب أسعار الأركان ديناميكياً وتحويلها بأمان لتفادي مشكلة الصفر (0.0) إذا كانت مخزنة كنص
+          final double memoriesPrice =
+              double.tryParse(appointment.memoriesCornerPrice.toString()) ??
+              0.0;
+          final double safesPrice =
+              double.tryParse(appointment.safesCornerPrice.toString()) ?? 0.0;
+          final double coversPrice =
+              double.tryParse(appointment.coversServicePrice.toString()) ?? 0.0;
+
+          // 3. حساب السعر الإجمالي الكلي المحدث والشامل لكل شيء
+          final double totalOriginalPrice =
+              paidAmount +
+              restAmount +
+              transport +
+              memoriesPrice +
+              safesPrice +
+              coversPrice;
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20.0),
             child: Column(
@@ -119,7 +145,6 @@ class DetailsAppScreen extends ConsumerWidget {
                           "الاسم:",
                           appointment.name,
                         ),
-                        // 🌟 هنا تم استدعاء دالة التنسيق لحل مشكلة ظهور النص المعقد
                         _buildDetailRow(
                           Icons.phone,
                           "الهاتف:",
@@ -145,6 +170,16 @@ class DetailsAppScreen extends ConsumerWidget {
                           "الوقت:",
                           formattedTime,
                         ),
+
+                        // const Divider(height: 30, thickness: 1),
+
+                        // 🌟 عرض السعر الإجمالي للحجز
+                        _buildDetailRow(
+                          Icons.monetization_on,
+                          "السعر الإجمالي:",
+                          "$totalOriginalPrice \$",
+                          isBold: true,
+                        ),
                         _buildDetailRow(
                           Icons.money,
                           "المبلغ المدفوع:",
@@ -160,15 +195,28 @@ class DetailsAppScreen extends ConsumerWidget {
                           "أجور النقل:",
                           "${appointment.transportFees} \$",
                         ),
+
+                        // const Divider(height: 30, thickness: 1),
                         _buildDetailRow(
                           Icons.star,
                           "ركن الذكريات:",
-                          appointment.hasMemoriesCorner ? "نعم" : "لا",
+                          appointment.hasMemoriesCorner
+                              ? "نعم (+ ${appointment.memoriesCornerPrice} \$)"
+                              : "لا",
                         ),
                         _buildDetailRow(
                           Icons.lock,
-                          "ركن الخزن:",
-                          appointment.hasSafesCorner ? "نعم" : "لا",
+                          "ركن الأمانات:",
+                          appointment.hasSafesCorner
+                              ? "نعم (+ ${appointment.safesCornerPrice} \$)"
+                              : "لا",
+                        ),
+                        _buildDetailRow(
+                          Icons.cameraswitch_outlined,
+                          "ركن الكفرات:",
+                          appointment.hasCoversService
+                              ? "نعم (+ ${appointment.coversServicePrice} \$)"
+                              : "لا",
                         ),
                         _buildDetailRow(
                           Icons.notes,
@@ -215,13 +263,22 @@ class DetailsAppScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildDetailRow(IconData icon, String label, String value) {
+  Widget _buildDetailRow(
+    IconData icon,
+    String label,
+    String value, {
+    bool isBold = false,
+  }) {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 10.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Icon(icon, color: Colors.pinkAccent.withOpacity(0.8), size: 24),
+          Icon(
+            icon,
+            color: isBold ? Colors.green : Colors.pinkAccent.withOpacity(0.8),
+            size: 24,
+          ),
           const SizedBox(width: 15),
           Text(
             label,
@@ -235,7 +292,11 @@ class DetailsAppScreen extends ConsumerWidget {
           Expanded(
             child: Text(
               value,
-              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: isBold ? FontWeight.bold : FontWeight.w500,
+                color: isBold ? Colors.green : Colors.black87,
+              ),
             ),
           ),
         ],

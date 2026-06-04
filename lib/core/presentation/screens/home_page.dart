@@ -1,5 +1,6 @@
 // ignore_for_file: deprecated_member_use, avoid_unnecessary_containers
 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:gap/gap.dart'; // تحتوي على الـ Gap والـ SliverGap معاً
 import 'package:princesses/auth/application/auth_notifier_provider.dart';
 import 'package:princesses/home/application/current_user_provider.dart';
@@ -187,10 +188,12 @@ class HomePage extends ConsumerWidget {
                         onTap: () => context.push("/import-event"),
                       ),
                       _buildGridButton(
-                        text: "قريبًا ",
-                        icon: Icons.soap_rounded,
+                        text: "فتح الماسح",
+                        icon: Icons.qr_code_scanner_rounded,
                         iconColor: Colors.pink.shade400,
-                        onTap: () => context.push("/import-event"),
+                        onTap: () => _showEventPicker(
+                          context,
+                        ), // 👈 استدعاء نافذة الاختيار هنا
                       ),
                     ],
                   ],
@@ -311,4 +314,66 @@ class HomePage extends ConsumerWidget {
       ),
     );
   }
+}
+
+// دالة لإظهار قائمة اختيار الحفلة قبل فتح الماسح
+void _showEventPicker(BuildContext context) {
+  showModalBottomSheet(
+    context: context,
+    shape: const RoundedRectangleBorder(
+      borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+    ),
+    builder: (context) {
+      return Container(
+        padding: const EdgeInsets.all(20),
+        height: 400, // ارتفاع القائمة
+        child: Column(
+          children: [
+            const Text(
+              "اختر الحفلة لبدء الفحص",
+              style: TextStyle(
+                fontFamily: "Amiri",
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+            const Divider(),
+            Expanded(
+              child: StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('events')
+                    .orderBy('createdAt', descending: true)
+                    .snapshots(),
+                builder: (context, snapshot) {
+                  if (!snapshot.hasData)
+                    return const Center(child: CircularProgressIndicator());
+
+                  var events = snapshot.data!.docs;
+
+                  return ListView.builder(
+                    itemCount: events.length,
+                    itemBuilder: (context, index) {
+                      var event = events[index];
+                      return ListTile(
+                        leading: const Icon(
+                          Icons.celebration,
+                          color: Colors.pink,
+                        ),
+                        title: Text(event['eventName']),
+                        onTap: () {
+                          Navigator.pop(context); // إغلاق القائمة
+                          // الانتقال للماسح مع الـ ID الخاص بالحفلة المختارة
+                          context.push("/scanner/${event.id}");
+                        },
+                      );
+                    },
+                  );
+                },
+              ),
+            ),
+          ],
+        ),
+      );
+    },
+  );
 }

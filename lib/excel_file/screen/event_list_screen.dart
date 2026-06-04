@@ -1,10 +1,83 @@
+// ignore_for_file: depend_on_referenced_packages
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:go_router/go_router.dart';
-import 'package:intl/intl.dart'; // لتنسيق تاريخ إنشاء الحفلة إذا رغبتِ
+import 'package:intl/intl.dart';
 
 class EventListScreen extends StatelessWidget {
   const EventListScreen({super.key});
+
+  //  دالة مسؤولة عن إظهار نافذة التأكيد وحذف الحفلة من الفايربيس
+  void _deleteEvent(BuildContext context, String eventId, String eventName) {
+    showDialog(
+      context: context,
+      builder: (BuildContext dialogContext) {
+        return AlertDialog(
+          title: const Row(
+            children: [
+              Icon(
+                Icons.warning_amber_rounded,
+                color: Color.fromARGB(255, 204, 69, 145),
+              ),
+              SizedBox(width: 8),
+              Text(
+                "تأكيد الحذف",
+                style: TextStyle(
+                  fontFamily: 'Amiri',
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ],
+          ),
+          content: Text(
+            "هل أنتِ متأكدة من حذف حفلة \"$eventName\" نهائياً؟\nلا يمكن التراجع عن هذا الإجراء.",
+          ),
+          actions: [
+            TextButton(
+              onPressed: () =>
+                  Navigator.pop(dialogContext), // إغلاق النافذة وإلغاء الحذف
+              child: const Text("إلغاء", style: TextStyle(color: Colors.grey)),
+            ),
+            ElevatedButton(
+              onPressed: () async {
+                Navigator.pop(dialogContext); // إغلاق النافذة أولاً
+
+                try {
+                  // حذف الحفلة من الفايربيس
+                  await FirebaseFirestore.instance
+                      .collection('events')
+                      .doc(eventId)
+                      .delete();
+
+                  // إشعار نجاح للمستخدم
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text("تم حذف حفلة $eventName بنجاح")),
+                    );
+                  }
+                } catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(
+                        content: Text("حدث خطأ أثناء الحذف: $e"),
+                        backgroundColor: Colors.red,
+                      ),
+                    );
+                  }
+                }
+              },
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color.fromARGB(255, 204, 69, 145),
+                foregroundColor: Colors.white,
+              ),
+              child: const Text("حذف نهائي"),
+            ),
+          ],
+        );
+      },
+    );
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -16,13 +89,13 @@ class EventListScreen extends StatelessWidget {
         ),
         centerTitle: true,
         backgroundColor: const Color.fromARGB(255, 204, 69, 145),
-        actions: [
-          // زر سريع لإضافة حفلة جديدة بالانتقال لشاشة الاستيراد السابقة
-          IconButton(
-            icon: const Icon(Icons.add_box, color: Colors.white, size: 28),
-            onPressed: () => context.push('/import'),
-          ),
-        ],
+        // actions: [
+        //   // زر سريع لإضافة حفلة جديدة بالانتقال لشاشة الاستيراد السابقة
+        //   IconButton(
+        //     icon: const Icon(Icons.add_box, color: Colors.white, size: 28),
+        //     onPressed: () => context.push('/import'),
+        //   ),
+        // ],
       ),
       body: StreamBuilder<QuerySnapshot>(
         // جلب الحفلات مرتبة من الأحدث إلى الأقدم
@@ -81,7 +154,7 @@ class EventListScreen extends StatelessWidget {
               }
 
               return Card(
-                // margin: const EdgeInsets.bottom edgedInsets.only(bottom: 16),
+                margin: const EdgeInsets.only(bottom: 16),
                 elevation: 4,
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(15),
@@ -93,7 +166,7 @@ class EventListScreen extends StatelessWidget {
                       // أيقونة الحفلة التجميلية
                       Container(
                         padding: const EdgeInsets.all(12),
-                        decoration: BoxDecoration(
+                        decoration: const BoxDecoration(
                           color: Color.fromARGB(255, 204, 69, 145),
                           shape: BoxShape.circle,
                         ),
@@ -131,33 +204,102 @@ class EventListScreen extends StatelessWidget {
                         ),
                       ),
 
-                      // الزر الذكي لفتح الماسح الخاص بهذه الحفلة بالتحديد
-                      ElevatedButton.icon(
-                        onPressed: () {
-                          debugPrint(
-                            "🔄 الانتقال لماسح الحفلة: $eventName بـ ID: $eventId",
-                          );
-                          // الانتقال للراوتر وتمرير الـ ID الديناميكي
-                          context.push('/scanner/$eventId');
-                        },
-                        icon: const Icon(Icons.qr_code_scanner, size: 20),
-                        label: const Text("فتح الماسح"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color.fromARGB(
-                            255,
-                            204,
-                            69,
-                            145,
+                      // 🛠️ الأزرار بجانب بعضها في سطر واحد (Row)
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          // 1. زر الانتقال لجدول المعازيم الخاص بهذه الحفلة
+                          IconButton(
+                            onPressed: () {
+                              debugPrint(
+                                "🔄 الانتقال إلى جدول معازيم الحفلة: $eventName بـ ID: $eventId",
+                              );
+                              context.push('/attendees/$eventId');
+                            },
+                            icon: const Icon(
+                              Icons.people_outline_rounded,
+                            ), // أيقونة ناعمة ومناسبة للمظهر الجديد
+                            color: const Color.fromARGB(
+                              255,
+                              204,
+                              69,
+                              145,
+                            ), // نفس اللون الزهري للحفلة
+                            tooltip: 'جدول المعازيم',
+                            style: IconButton.styleFrom(
+                              backgroundColor:
+                                  const Color.fromARGB(
+                                    255,
+                                    204,
+                                    69,
+                                    145,
+                                  ).withOpacity(
+                                    0.1,
+                                  ), // خلفية زهرية خفيفة جداً (10%)
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(
+                                  10,
+                                ), // حواف دائرية متناسقة
+                              ),
+                              padding: const EdgeInsets.all(10),
+                            ),
                           ),
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
+                          // ElevatedButton.icon(
+                          //   onPressed: () {
+                          //     debugPrint(
+                          //       "🔄 الانتقال إلى جدول معازيم الحفلة: $eventName بـ ID: $eventId",
+                          //     );
+                          //     context.push('/attendees/$eventId');
+                          //   },
+                          //   icon: const Icon(Icons.people, size: 20),
+                          //   label: const Text(
+                          //     "جدول المعازيم",
+                          //     style: TextStyle(fontSize: 13),
+                          //   ),
+                          //   style: ElevatedButton.styleFrom(
+                          //     backgroundColor: const Color.fromARGB(
+                          //       255,
+                          //       204,
+                          //       69,
+                          //       145,
+                          //     ),
+                          //     foregroundColor: Colors.white,
+                          //     shape: RoundedRectangleBorder(
+                          //       borderRadius: BorderRadius.circular(10),
+                          //     ),
+                          //     padding: const EdgeInsets.symmetric(
+                          //       horizontal: 12,
+                          //       vertical: 10,
+                          //     ),
+                          //   ),
+                          // ),
+                          const SizedBox(width: 8), // مسافة صغيرة بين الزرين
+                          // 2. زر حذف الحفلة كأيقونة زهرية بعد زر عرض الجدول
+                          IconButton(
+                            onPressed: () =>
+                                _deleteEvent(context, eventId, eventName),
+                            icon: const Icon(Icons.delete_outline_rounded),
+                            color: const Color.fromARGB(
+                              255,
+                              204,
+                              69,
+                              145,
+                            ), // نفس اللون الزهري للحفلة
+                            tooltip: 'حذف الحفلة',
+                            style: IconButton.styleFrom(
+                              backgroundColor: const Color.fromARGB(
+                                255,
+                                204,
+                                69,
+                                145,
+                              ).withOpacity(0.1), // خلفية زهرية خفيفة جداً
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              padding: const EdgeInsets.all(10),
+                            ),
                           ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 12,
-                            vertical: 10,
-                          ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
