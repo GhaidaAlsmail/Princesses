@@ -123,11 +123,21 @@ flutter:
       fonts:
         - asset: assets/fonts/Amiri-Regular.ttf
 
+# icons_launcher:
+#   image_path: "assets/images/logo.png"
+#   platforms:
+#     android:
+#       enable: true
+#     web:
+#       enable: true
 icons_launcher:
-  image_path: "assets/images/icon.png"
+  image_path: "assets/images/logo.png" # ستبقى كمرجع عام أو للويب
   platforms:
     android:
       enable: true
+      # 🌟 استخدام الأيقونات المتكيفة للأندرويد لتعطيكِ تحكماً كاملاً بالحجم
+      adaptive_icon_background: "#FFFFFF" # لون الخلفية (يمكنكِ وضع لون ثيم التطبيق مثلاً)
+      adaptive_icon_foreground: "assets/images/logo.png" # الشعار هنا سيتمدد بشكل أفضل
     web:
       enable: true
 

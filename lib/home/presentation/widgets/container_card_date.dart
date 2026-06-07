@@ -6,7 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:gap/gap.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
-// 1. تعريف القرى والمناطق التابعة لكل مدينة (مأخوذة من أسعارك الرسمية)
+// 1. تعريف القرى والمناطق التابعة لكل مدينة
 const Map<String, List<String>> ruralLocationsByCity = {
   'idleb': [
     'الدانا / كفرتخاريم',
@@ -92,7 +92,6 @@ class _ContainerCardDateState extends State<ContainerCardDate> {
               ),
             ],
             onChanged: (_) {
-              // ذكاء برمجي: إذا غير المستخدم المدينة، نصفر حقل الريف المختار منعاً للتضارب
               form.control('ruralLocation').updateValue('');
               calculateAppointmentPricing(form);
             },
@@ -116,8 +115,7 @@ class _ContainerCardDateState extends State<ContainerCardDate> {
             },
           ),
 
-          // 2. ربط مشترك: يراقب حالة السويتش وحالة المدينة المختارة معاً
-          // 2. ربط مشترك: يراقب حالة السويتش وحالة المدينة المختارة معاً
+          // مراقبة حالة السويتش وحالة المدينة المختارة معاً
           ReactiveValueListenableBuilder<bool>(
             formControlName: 'isRural',
             builder: (context, ruralControl, child) {
@@ -126,7 +124,6 @@ class _ContainerCardDateState extends State<ContainerCardDate> {
                   formControlName: 'city',
                   builder: (context, cityControl, child) {
                     final selectedCity = cityControl.value ?? 'idleb';
-                    // جلب قائمة المناطق التابعة للمدينة الحالية، وإذا لم توجد نضع قائمة فارغة
                     final availableRuralLocations =
                         ruralLocationsByCity[selectedCity] ?? [];
 
@@ -186,7 +183,7 @@ class _ContainerCardDateState extends State<ContainerCardDate> {
                           onChanged: (_) => calculateAppointmentPricing(form),
                         ),
 
-                        // 🌟 مراقبة السويتش والاختيار معاً: لا يظهر التيكست بوكس إلا إذا تفعل زر السيارة واختار "غير ذلك"
+                        // 🌟 التحكم الذكي بظهور حقول الإدخال اليدوية
                         ReactiveFormConsumer(
                           builder: (context, formGroup, child) {
                             final selectedLocation = formGroup
@@ -198,19 +195,18 @@ class _ContainerCardDateState extends State<ContainerCardDate> {
                                 false;
                             final hasCarChecked =
                                 formGroup.control('hasCar').value as bool? ??
-                                false; // 👈 فحص زر السيارة
+                                false;
 
+                            // الشرط الأساسي: يجب أن يكون الريف مفعلاً واختار "غير ذلك"
                             if (isRuralChecked &&
-                                hasCarChecked &&
                                 selectedLocation == 'غير ذلك') {
                               return Padding(
-                                padding: const EdgeInsets.only(
-                                  top: 10.0,
-                                  bottom: 10.0,
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 10.0,
                                 ),
                                 child: Row(
                                   children: [
-                                    // تيكست بوكس لكتابة اسم المنطقة
+                                    // 1. حقل اسم المنطقة: يظهر مباشرة عند اختيار "غير ذلك"
                                     Expanded(
                                       flex: 2,
                                       child: MyTextField(
@@ -225,32 +221,29 @@ class _ContainerCardDateState extends State<ContainerCardDate> {
                                             Icons.edit_location_alt_rounded,
                                       ),
                                     ),
-                                    const SizedBox(width: 10),
 
-                                    // تيكست بوكس لكتابة أجور الطريق (النقل) يدوياً
-                                    Expanded(
-                                      flex: 1,
-                                      child: ReactiveTextField<String>(
-                                        formControlName: 'customTransportFees',
-                                        keyboardType: TextInputType.number,
-                                        onChanged: (control) =>
-                                            calculateAppointmentPricing(form),
-                                        decoration: InputDecoration(
-                                          labelText: 'أجور النقل',
-                                          labelStyle: const TextStyle(
-                                            fontFamily: "Amiri",
-                                          ),
-                                          filled: true,
-                                          fillColor: Colors.white,
-                                          border: OutlineInputBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              25,
-                                            ),
-                                            borderSide: BorderSide.none,
+                                    // نضع مسافة بين الحقلين فقط إذا كان حقل الأجور سيظهر
+                                    if (hasCarChecked)
+                                      const SizedBox(width: 10),
+
+                                    // 2. حقل أجور النقل: لا يظهر إلا إذا تم تفعيل سويتش السيارة أيضاً
+                                    if (hasCarChecked)
+                                      Expanded(
+                                        flex: 1,
+                                        child: ReactiveTextField<String>(
+                                          formControlName:
+                                              'customTransportFees',
+                                          keyboardType: TextInputType.number,
+                                          onChanged: (control) {
+                                            //  نستدعي الدالة لتحديث الحسابات مع كل حرف يكتبه المستخدم
+                                            calculateAppointmentPricing(form);
+                                          },
+                                          decoration: InputDecoration(
+                                            labelText: 'أجور النقل',
+                                            // ... باقي الستاينغ
                                           ),
                                         ),
                                       ),
-                                    ),
                                   ],
                                 ),
                               );

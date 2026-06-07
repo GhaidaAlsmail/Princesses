@@ -12,25 +12,53 @@ class DetailsAppScreen extends ConsumerWidget {
   final String appId;
 
   const DetailsAppScreen({super.key, required this.appId});
-
-  // دالة مساعدة لتنظيف وعرض رقم الهاتف بشكل مقروء
   String _formatPhoneNumber(String rawPhone) {
     if (rawPhone.isEmpty) return "لا يوجد";
+
+    // 1. تنظيف النص من الفراغات أو الرموز الزائدة
+    String cleanPhone = rawPhone.replaceAll(RegExp(r'[\s\-\+\(\)]'), '');
+
+    // 2. معالجة حالات نصوص الباكج القديمة المخزنة مثل (nsn: 963...) قبل أي شيء
+    if (cleanPhone.contains("nsn:")) {
+      final regExp = RegExp(r'nsn:\s*(\d+)');
+      final match = regExp.firstMatch(
+        rawPhone,
+      ); // نستخدم الأصل للبحث عن النص بدقة
+      if (match != null && match.group(1) != null) {
+        cleanPhone = match.group(1)!;
+      }
+    }
+
+    // 3. حل مشكلة تكرار النداء الدولي الصريح بأي صيغة (00963963 أو 963963)
+    if (cleanPhone.startsWith('00963963')) {
+      cleanPhone = cleanPhone.substring(5); // ترك 963 واحدة مع الرقم
+    } else if (cleanPhone.startsWith('963963')) {
+      cleanPhone = cleanPhone.substring(3); // ترك 963 واحدة مع الرقم
+    }
+
+    // تأمين إضافة زائد واحدة في البداية للباكج إذا كان يبدأ بـ 963 ليتم التعرف عليه دولياً
+    if (cleanPhone.startsWith('963')) {
+      cleanPhone = '+$cleanPhone';
+    } else if (cleanPhone.startsWith('09')) {
+      // إذا كان رقم محلي سوري يبدأ بـ 09، نحوله لصيغة دولية صحيحة لتجنب المشاكل
+      cleanPhone = '+963${cleanPhone.substring(1)}';
+    } else if (cleanPhone.startsWith('9') && cleanPhone.length == 9) {
+      // إذا كان رقم محلي بدون صفر (9xx xxx xxx)
+      cleanPhone = '+963$cleanPhone';
+    }
+
     try {
-      // محاولة قراءة وتحليل النص ككائن هاتف
-      final parsed = PhoneNumber.parse(rawPhone);
+      // محاولة قراءة وتحليل النص ككائن هاتف مع تحديد الدولة لضمان عدم التكرار
+      final parsed = PhoneNumber.parse(cleanPhone, callerCountry: IsoCode.SY);
       return parsed
           .international; // يعيد الرقم بالصيغة الدولية المنسقة تلقائياً
     } catch (_) {
-      // إذا كان النص مخزناً مسبقاً بشكل معقد أو يحتوي على نصوص الباكج القديمة
-      if (rawPhone.contains("nsn:")) {
-        final regExp = RegExp(r'nsn:\s*(\d+)');
-        final match = regExp.firstMatch(rawPhone);
-        if (match != null && match.group(1) != null) {
-          return "+963 ${match.group(1)}"; // استخراج الرقم الصافي في حال علق النص القديم بقاعدة البيانات
-        }
+      // كخيار احتياطي أخير إذا فشل التحليل، نعيد بناء الرقم بشكل يدوي نظيف
+      String fallback = cleanPhone.replaceAll('+', '');
+      if (fallback.startsWith('963')) {
+        return "+963 ${fallback.substring(3)}";
       }
-      return rawPhone; // كخيار احتياطي إذا كان الرقم عادي
+      return rawPhone;
     }
   }
 
@@ -101,7 +129,6 @@ class DetailsAppScreen extends ConsumerWidget {
           final formattedTime = DateFormat('hh:mm a').format(appointment.date);
 
           // حساب السعر الإجمالي (المدفوع + المتبقي) بشكل ديناميكي
-          // 1. تحويل القيم المادية الأساسية بأمان (سواء كانت نص أو رقم)
           final double paidAmount =
               double.tryParse(appointment.paid.toString()) ?? 0.0;
           final double restAmount =
@@ -109,7 +136,6 @@ class DetailsAppScreen extends ConsumerWidget {
           final double transport =
               double.tryParse(appointment.transportFees.toString()) ?? 0.0;
 
-          // 2. جلب أسعار الأركان ديناميكياً وتحويلها بأمان لتفادي مشكلة الصفر (0.0) إذا كانت مخزنة كنص
           final double memoriesPrice =
               double.tryParse(appointment.memoriesCornerPrice.toString()) ??
               0.0;
@@ -118,7 +144,7 @@ class DetailsAppScreen extends ConsumerWidget {
           final double coversPrice =
               double.tryParse(appointment.coversServicePrice.toString()) ?? 0.0;
 
-          // 3. حساب السعر الإجمالي الكلي المحدث والشامل لكل شيء
+          // حساب السعر الإجمالي الكلي المحدث والشامل لكل شيء
           final double totalOriginalPrice =
               paidAmount +
               restAmount +
@@ -126,6 +152,15 @@ class DetailsAppScreen extends ConsumerWidget {
               memoriesPrice +
               safesPrice +
               coversPrice;
+
+          String locationToDisplay = appointment.city;
+          if (appointment.isRural) {
+            if (appointment.ruralLocation.trim().isNotEmpty) {
+              locationToDisplay = "ريف - ${appointment.ruralLocation}";
+            } else {
+              locationToDisplay = "ريف - غير محدد";
+            }
+          }
           return SingleChildScrollView(
             padding: const EdgeInsets.all(20.0),
             child: Column(
@@ -148,12 +183,13 @@ class DetailsAppScreen extends ConsumerWidget {
                         _buildDetailRow(
                           Icons.phone,
                           "الهاتف:",
-                          _formatPhoneNumber(appointment.phone),
+                          // 🌟 إضافة \u200E لضمان ظهور الرقم والرمز الدولي مرتبين من اليسار لليمين بدون انقلاب
+                          "\u200E${_formatPhoneNumber(appointment.phone)}",
                         ),
                         _buildDetailRow(
                           Icons.location_city,
-                          "المدينة:",
-                          appointment.city,
+                          appointment.isRural ? "المنطقة (ريف):" : "المدينة:",
+                          locationToDisplay,
                         ),
                         _buildDetailRow(
                           Icons.store,
@@ -171,32 +207,29 @@ class DetailsAppScreen extends ConsumerWidget {
                           formattedTime,
                         ),
 
-                        // const Divider(height: 30, thickness: 1),
-
-                        // 🌟 عرض السعر الإجمالي للحجز
+                        // 🌟 إضافة \u200E لكل أسعار العملات لتظهر بشكل صحيح (الرقم ثم $ وليس العكس)
                         _buildDetailRow(
                           Icons.monetization_on,
                           "السعر الإجمالي:",
-                          "$totalOriginalPrice \$",
+                          "\u200E$totalOriginalPrice \$",
                           isBold: true,
                         ),
                         _buildDetailRow(
                           Icons.money,
                           "المبلغ المدفوع:",
-                          "${appointment.paid} \$",
+                          "\u200E${appointment.paid} \$",
                         ),
                         _buildDetailRow(
                           Icons.money_off,
                           "المبلغ المتبقي:",
-                          "${appointment.rest} \$",
+                          "\u200E${appointment.rest} \$",
                         ),
                         _buildDetailRow(
                           Icons.local_shipping,
                           "أجور النقل:",
-                          "${appointment.transportFees} \$",
+                          "\u200E${appointment.transportFees} \$",
                         ),
 
-                        // const Divider(height: 30, thickness: 1),
                         _buildDetailRow(
                           Icons.star,
                           "ركن الذكريات:",

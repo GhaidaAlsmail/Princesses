@@ -19,7 +19,7 @@ class FirestoreAppoitmentRepository implements AppoitmentRepository {
 
   late FirebaseFirestore _firebase;
   final String collectionName = "appointments";
-
+  final Duration _networkTimeout = const Duration(seconds: 8);
   @override
   Future<void> addAppointment({required AppointmentModel app}) async {
     try {
@@ -29,7 +29,8 @@ class FirestoreAppoitmentRepository implements AppoitmentRepository {
       await _firebase
           .collection(collectionName)
           .doc(docId)
-          .set(createdApp.toJson());
+          .set(createdApp.toJson())
+          .timeout(_networkTimeout);
     } catch (e) {
       rethrow;
     }
@@ -58,9 +59,19 @@ class FirestoreAppoitmentRepository implements AppoitmentRepository {
           // تضمين الحقول الجديدة لكي لا تضيع أثناء الـ Mapping
           'hasMemoriesCorner': data['hasMemoriesCorner'] ?? false,
           'hasSafesCorner': data['hasSafesCorner'] ?? false,
+          'hasCoversService': data['hasCoversService'] ?? false,
           'isRural': data['isRural'] ?? false,
           'ruralLocation': data['ruralLocation'] ?? "",
           'transportFees': (data['transportFees'] ?? 0.0).toDouble(),
+
+          //  إضافة قيم الأسعار الفردية لكي لا تضيع أثناء الـ Mapping والـ Stream
+          'memoriesCornerPrice': (data['memoriesCornerPrice'] ?? 0.0)
+              .toDouble(),
+          'safesCornerPrice': (data['safesCornerPrice'] ?? 0.0).toDouble(),
+          'coversServicePrice': (data['coversServicePrice'] ?? 0.0).toDouble(),
+          // 'isRural': data['isRural'] ?? false,
+          // 'ruralLocation': data['ruralLocation'] ?? "",
+          // 'transportFees': (data['transportFees'] ?? 0.0).toDouble(),
         });
       }).toList();
     });
@@ -100,9 +111,21 @@ class FirestoreAppoitmentRepository implements AppoitmentRepository {
               // تضمين الحقول الجديدة هنا أيضاً
               'hasMemoriesCorner': data['hasMemoriesCorner'] ?? false,
               'hasSafesCorner': data['hasSafesCorner'] ?? false,
+              // 'isRural': data['isRural'] ?? false,
+              // 'ruralLocation': data['ruralLocation'] ?? "",
+              // 'transportFees': (data['transportFees'] ?? 0.0).toDouble(),
+              'hasCoversService':
+                  data['hasCoversService'] ?? false, // 👈 تم إضافته
               'isRural': data['isRural'] ?? false,
               'ruralLocation': data['ruralLocation'] ?? "",
               'transportFees': (data['transportFees'] ?? 0.0).toDouble(),
+
+              // 🌟 إضافة قيم الأسعار الفردية هنا أيضاً لحجوزات المدن المخصصة
+              'memoriesCornerPrice': (data['memoriesCornerPrice'] ?? 0.0)
+                  .toDouble(),
+              'safesCornerPrice': (data['safesCornerPrice'] ?? 0.0).toDouble(),
+              'coversServicePrice': (data['coversServicePrice'] ?? 0.0)
+                  .toDouble(),
             });
           }).toList();
         });

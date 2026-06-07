@@ -118,14 +118,14 @@ class _AppointmentState extends ConsumerState<Appointment> {
                   ),
                   child: HeartRow(),
                 ),
-                const ContainerCard(), // 💡 ملاحظة: الشيك بوكس الجديد يجب وضعه داخل كرت الخدمات هذا أو أسفله مباشرة
+                const ContainerCard(),
                 const Gap(10),
                 const ContainerCardDate(),
                 const Gap(10),
                 const ContainerCardMoney(),
                 const Gap(20),
 
-                // 🌟 عرض المبلغ الكامل الإجمالي بشكل ديناميكي ومباشر
+                // عرض المبلغ الكامل الإجمالي بشكل ديناميكي ومباشر
                 ReactiveFormConsumer(
                   builder: (context, formGroup, child) {
                     final double rest =
@@ -188,104 +188,130 @@ class _AppointmentState extends ConsumerState<Appointment> {
                   child: ReactiveFormConsumer(
                     builder: (context, formGroup, child) {
                       return MyButton(
+                        // 🎯 هنا الفحص المباشر لعرض نص الانتظار
                         text: state.isLoading ? "جارٍ الحفظ..." : "حجز",
                         textColor: Colors.white,
                         width: 350,
                         iconColor: Colors.white,
                         fillColor: Theme.of(context).colorScheme.secondary,
-                        onpressed: () async {
-                          final computedTransportFees =
-                              calculateAppointmentPricing(form);
+                        onpressed: state.isLoading
+                            ? null
+                            : () async {
+                                // 🎯 تعطيل الزر أثناء التحميل لمنع النقرات المتكررة
 
-                          final appointment = AppointmentModel(
-                            id: DateTime.now().millisecondsSinceEpoch
-                                .toString(),
-                            name: form.control("name").value ?? '',
-                            place: form.control("place").value ?? '',
-                            mediator: form.control("mediator").value ?? '',
-                            city: form.control("city").value ?? '',
-                            notes: form.control("notes").value ?? '',
-                            phone:
-                                form.control("phone").value?.toString() ?? '',
-                            date: form.control("date").value as DateTime,
-                            number: form.control("number").value ?? '',
-                            email: form.control("email").value ?? '',
-                            paid: form.control("paid").value ?? '',
-                            rest: form.control("rest").value ?? '',
-                            hasMemoriesCorner:
-                                form.control("hasMemoriesCorner").value
-                                    as bool? ??
-                                false,
-                            hasSafesCorner:
-                                form.control("hasSafesCorner").value as bool? ??
-                                false,
+                                final computedTransportFees =
+                                    calculateAppointmentPricing(form);
 
-                            // 🛠️ تثبيت القيمة المضافة لخدمة الكفرات في الموديل عند الإرسال
-                            hasCoversService:
-                                form.control("hasCoversService").value
-                                    as bool? ??
-                                false,
+                                bool isRuralValue =
+                                    form.control("isRural").value as bool? ??
+                                    false;
+                                String ruralLocationValue =
+                                    form.control("ruralLocation").value ?? '';
+                                String customRural =
+                                    form.control("customRuralLocation").value ??
+                                    '';
 
-                            isRural:
-                                form.control("isRural").value as bool? ?? false,
-                            ruralLocation:
-                                form.control("ruralLocation").value ?? '',
-                            transportFees: computedTransportFees,
-                          );
-                          await notifier.add(appointment);
+                                if (isRuralValue &&
+                                    (ruralLocationValue == 'غير ذلك' ||
+                                        ruralLocationValue.isEmpty)) {
+                                  if (customRural.isNotEmpty) {
+                                    ruralLocationValue = customRural;
+                                  }
+                                }
 
-                          await NotificationService().schedulePartyReminders(
-                            partyId: appointment.id.toString(),
-                            title: "لديك موعد",
-                            body:
-                                "موعدك في ${appointment.name} مع ${appointment.place} تاريخ ${appointment.date}",
-                            date: appointment.date,
-                          );
+                                final appointment = AppointmentModel(
+                                  id: DateTime.now().millisecondsSinceEpoch
+                                      .toString(),
+                                  name: form.control("name").value ?? '',
+                                  place: form.control("place").value ?? '',
+                                  mediator:
+                                      form.control("mediator").value ?? '',
+                                  city: form.control("city").value ?? '',
+                                  notes: form.control("notes").value ?? '',
+                                  phone:
+                                      form.control("phone").value?.toString() ??
+                                      '',
+                                  date: form.control("date").value as DateTime,
+                                  number: form.control("number").value ?? '',
+                                  email: form.control("email").value ?? '',
+                                  paid: form.control("paid").value ?? '',
+                                  rest: form.control("rest").value ?? '',
+                                  hasMemoriesCorner:
+                                      form.control("hasMemoriesCorner").value
+                                          as bool? ??
+                                      false,
+                                  hasSafesCorner:
+                                      form.control("hasSafesCorner").value
+                                          as bool? ??
+                                      false,
+                                  hasCoversService:
+                                      form.control("hasCoversService").value
+                                          as bool? ??
+                                      false,
+                                  isRural: isRuralValue,
+                                  ruralLocation: ruralLocationValue,
+                                  transportFees: computedTransportFees,
+                                  memoriesCornerPrice:
+                                      double.tryParse(
+                                        form
+                                                .control('memoriesCornerPrice')
+                                                .value
+                                                ?.toString() ??
+                                            '0',
+                                      ) ??
+                                      0.0,
+                                  safesCornerPrice:
+                                      double.tryParse(
+                                        form
+                                                .control('safesCornerPrice')
+                                                .value
+                                                ?.toString() ??
+                                            '0',
+                                      ) ??
+                                      0.0,
+                                  coversServicePrice:
+                                      double.tryParse(
+                                        form
+                                                .control('coversServicePrice')
+                                                .value
+                                                ?.toString() ??
+                                            '0',
+                                      ) ??
+                                      0.0,
+                                );
+                                try {
+                                  await notifier.add(appointment);
+                                } catch (e) {
+                                  // هنا ستلتقطين خطأ الـ Timeout وتمنعين تعليق الشاشة
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        "فشل الاتصال بالشبكة، يرجى التحقق من الإنترنت.",
+                                      ),
+                                    ),
+                                  );
+                                }
+                                // 1️⃣ إرسال الطلب أولاً وانتظار انتهاء عملية الحفظ بالكامل في النوتيفاير
+                                // await notifier.add(appointment);
 
-                          final container = ProviderScope.containerOf(context);
-                          container
-                              .read(notificationsProvider.notifier)
-                              .addNotification(
-                                AppNotification(
-                                  title: "لديك موعد",
-                                  body:
-                                      "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}",
-                                  date: DateTime.now(),
-                                ),
-                              );
-                          await saveNotificationToHistory(
-                            appointment.id.hashCode,
-                            "لديك موعد",
-                            "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}",
-                          );
-                          // await NotificationService().saveNotificationToHistory(
-                          //   appointment.id.hashCode,
-                          //   "لديك موعد",
-                          //   "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}",
-                          // );
+                                // 2️⃣ فحص حالة الـ Provider الحالية بعد انتهاء تنفيذ الـ add مباشرة لضمان نجاح العملية قبل الخروج
+                                final currentState = ref.read(
+                                  appointmentNotifierProvider,
+                                );
 
-                          form.reset(
-                            value: {
-                              'phone': PhoneNumber(
-                                nsn: '',
-                                isoCode: IsoCode.SY,
-                              ),
-                              'city':
-                                  ref.read(currentUserProvider).value?.city ??
-                                  'idleb',
-                              // إعادة تعيين الخيارات لقيمها الافتراضية
-                              'hasMemoriesCorner': false,
-                              'hasSafesCorner': false,
-                              'hasCoversService': false,
-                              'isRural': false,
-                            },
-                            removeFocus: true,
-                          );
+                                if (currentState.hasError) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    SnackBar(
+                                      content: Text(
+                                        "حدث خطأ: ${currentState.error}",
+                                      ),
+                                      backgroundColor: Colors.red,
+                                    ),
+                                  );
+                                  return; // توقيف الدالة هنا في حال وجود خطأ وعدم تصفير البيانات
+                                }
 
-                          context.go("/reservations");
-
-                          state.whenOrNull(
-                            data: (_) =>
+                                // 3️⃣ إذا نجحت العملية (لم يحدث خطأ)، نكمل بقية الإجراءات بالتوالي:
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text("تم حفظ الحجز بنجاح!"),
@@ -296,16 +322,58 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                       131,
                                     ),
                                   ),
-                                ),
-                            error: (e, _) =>
-                                ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
-                                    content: Text("حدث خطأ: $e"),
-                                    backgroundColor: Colors.red,
-                                  ),
-                                ),
-                          );
-                        },
+                                );
+
+                                // جدولة الإشعارات والعمليات الخلفية
+                                await NotificationService().schedulePartyReminders(
+                                  partyId: appointment.id.toString(),
+                                  title: "لديك موعد",
+                                  body:
+                                      "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}",
+                                  date: appointment.date,
+                                );
+
+                                ref
+                                    .read(notificationsProvider.notifier)
+                                    .addNotification(
+                                      AppNotification(
+                                        title: "لديك موعد",
+                                        body:
+                                            "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}",
+                                        date: DateTime.now(),
+                                      ),
+                                    );
+
+                                await saveNotificationToHistory(
+                                  appointment.id.hashCode,
+                                  "لديك موعد",
+                                  "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}",
+                                );
+
+                                // 4️⃣ تصفير البيانات بعد التأكد من اكتمال الحفظ بنجاح
+                                form.reset(
+                                  value: {
+                                    'phone': PhoneNumber(
+                                      nsn: '',
+                                      isoCode: IsoCode.SY,
+                                    ),
+                                    'city':
+                                        ref
+                                            .read(currentUserProvider)
+                                            .value
+                                            ?.city ??
+                                        'idleb',
+                                    'hasMemoriesCorner': false,
+                                    'hasSafesCorner': false,
+                                    'hasCoversService': false,
+                                    'isRural': false,
+                                  },
+                                  removeFocus: true,
+                                );
+
+                                // 5️⃣ التوجيه الأخير إلى صفحة الحجوزات
+                                context.go("/reservations");
+                              },
                         icon: Icons.app_registration_rounded,
                       );
                     },

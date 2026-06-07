@@ -151,9 +151,16 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                 "ruralLocation": app.ruralLocation,
                 "hasMemoriesCorner": app.hasMemoriesCorner,
                 "hasSafesCorner": app.hasSafesCorner,
-                "transportFees": app.transportFees,
+                // "transportFees": app.transportFees,
 
-                // قيمة افتراضية لحقل السيارة داخل الفورم بناءً على أجور النقل السابقة
+                // // قيمة افتراضية لحقل السيارة داخل الفورم بناءً على أجور النقل السابقة
+                // "hasCar": app.transportFees > 0,
+                "hasCoversService": app.hasCoversService,
+                "transportFees": app.transportFees,
+                "memoriesCornerPrice": app.memoriesCornerPrice,
+                "safesCornerPrice": app.safesCornerPrice,
+                "coversServicePrice": app.coversServicePrice,
+
                 "hasCar": app.transportFees > 0,
               });
 
@@ -227,10 +234,40 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                     form.control("hasSafesCorner").value
                                         as bool? ??
                                     false,
+                                hasCoversService:
+                                    form
+                                            .control("hasCoversService")
+                                            .value // 👈 تم إضافته
+                                        as bool? ??
+                                    false,
                                 transportFees:
                                     double.tryParse(
                                       form
                                           .control("transportFees")
+                                          .value
+                                          .toString(),
+                                    ) ??
+                                    0.0,
+                                memoriesCornerPrice:
+                                    double.tryParse(
+                                      form
+                                          .control("memoriesCornerPrice")
+                                          .value
+                                          .toString(),
+                                    ) ??
+                                    0.0,
+                                safesCornerPrice:
+                                    double.tryParse(
+                                      form
+                                          .control("safesCornerPrice")
+                                          .value
+                                          .toString(),
+                                    ) ??
+                                    0.0,
+                                coversServicePrice:
+                                    double.tryParse(
+                                      form
+                                          .control("coversServicePrice")
                                           .value
                                           .toString(),
                                     ) ??
