@@ -234,8 +234,8 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                   date: form.control("date").value as DateTime,
                                   number: form.control("number").value ?? '',
                                   email: form.control("email").value ?? '',
-                                  paid: form.control("paid").value ?? '',
-                                  rest: form.control("rest").value ?? '',
+                                  // paid: form.control("paid").value ?? '',
+                                  // rest: form.control("rest").value ?? '',
                                   hasMemoriesCorner:
                                       form.control("hasMemoriesCorner").value
                                           as bool? ??
@@ -250,7 +250,10 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                       false,
                                   isRural: isRuralValue,
                                   ruralLocation: ruralLocationValue,
+                                  // transportFees: computedTransportFees,
                                   transportFees: computedTransportFees,
+                                  paid: form.control("paid").value ?? '0',
+                                  rest: form.control("rest").value ?? '0',
                                   memoriesCornerPrice:
                                       double.tryParse(
                                         form

@@ -1,6 +1,5 @@
 // ignore_for_file: curly_braces_in_flow_control_structures
 
-import 'package:flutter/material.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
 // 1. جداول الأسعار الصريحة المستقلة (تطبق على كافة المدن وأريافها حالياً)
@@ -53,7 +52,9 @@ double calculateAppointmentPricing(FormGroup form) {
   final bool isRural = form.control('isRural').value as bool? ?? false;
   final String ruralLoc = form.control('ruralLocation').value?.toString() ?? '';
 
-  final bool hasCar = form.control('hasCar').value as bool? ?? false;
+  // 🌟 تعديل آمن: التأكد من جلب حالة السيارة، وإذا لم تكن موجودة نعتبرها true طالما أنه ريف وله أجور نقل
+  final bool hasCar = form.control('hasCar').value as bool? ?? true;
+
   final bool hasMemories =
       form.control('hasMemoriesCorner').value as bool? ?? false;
   final bool hasSafes = form.control('hasSafesCorner').value as bool? ?? false;
@@ -99,46 +100,43 @@ double calculateAppointmentPricing(FormGroup form) {
     totalPrice += currentSafesPrice;
   }
 
-  // 7. جمع أجور النقل (السيارة) بأمان مع فحص الـ null
+  // 7. جمع أجور النقل الشاملة
   if (isRural && hasCar) {
     if (ruralTransportPrices.containsKey(ruralLoc)) {
       transportFees = ruralTransportPrices[ruralLoc]!;
     } else if (ruralLoc == 'غير ذلك') {
       final customFeesValue = form.control('customTransportFees').value;
-      // 🌟 فحص آمن: إذا كان فارغاً لا نأخذ القيمة القديمة ولا نتحول لـ "null"
       transportFees =
           double.tryParse(customFeesValue?.toString() ?? '0') ?? 0.0;
     }
     totalPrice += transportFees;
   }
 
-  // 8. حساب المبلغ المتبقي بأمان مع فحص الـ null لحقل المدفوع
+  // 8. حساب المبلغ المتبقي بأمان
   final paidValue = form.control('paid').value;
   final double paid = double.tryParse(paidValue?.toString() ?? '0') ?? 0.0;
 
   double restValue = totalPrice - paid;
 
-  // 9. تحديث الحقول مباشرة في الـ Form (تحديث باستخدام updateValue لضمان إعادة البناء السليمة)
+  // 9. تحديث الحقول مباشرة في الـ Form وتمرير قيم صافية بدون تداخل دائرى
   form
       .control('rest')
       .updateValue(
         restValue < 0 ? '0' : restValue.toStringAsFixed(0),
-        emitEvent: true, // 🌟 يجبر الواجهة على التحديث فوراً
+        emitEvent:
+            true, // 🌟 نضعها false هنا لمنع الدخول في حلقة استماع 무한 استدعاء (Infinite Loop)
       );
 
-  form.control('transportFees').updateValue(transportFees, emitEvent: true);
-  // التعديل هنا: استخدام updateValue بدلاً من الـ value المباشر
+  form.control('transportFees').updateValue(transportFees, emitEvent: false);
   form
       .control('memoriesCornerPrice')
-      .updateValue(currentMemoriesPrice, emitEvent: true);
+      .updateValue(currentMemoriesPrice, emitEvent: false);
   form
       .control('safesCornerPrice')
-      .updateValue(currentSafesPrice, emitEvent: true);
+      .updateValue(currentSafesPrice, emitEvent: false);
   form
       .control('coversServicePrice')
-      .updateValue(currentCoversPrice, emitEvent: true);
-  debugPrint(
-    "📝 فحص الحسابات -> ركن الأمانات مفعّل؟: $hasSafes | السعر المستخرج: $currentSafesPrice | القيمة المسجلة في الفورم: ${form.control('safesCornerPrice').value}",
-  );
+      .updateValue(currentCoversPrice, emitEvent: false);
+
   return transportFees;
 }

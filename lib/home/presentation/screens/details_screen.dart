@@ -12,6 +12,7 @@ class DetailsAppScreen extends ConsumerWidget {
   final String appId;
 
   const DetailsAppScreen({super.key, required this.appId});
+
   String _formatPhoneNumber(String rawPhone) {
     if (rawPhone.isEmpty) return "لا يوجد";
 
@@ -128,30 +129,14 @@ class DetailsAppScreen extends ConsumerWidget {
           ).format(appointment.date);
           final formattedTime = DateFormat('hh:mm a').format(appointment.date);
 
-          // حساب السعر الإجمالي (المدفوع + المتبقي) بشكل ديناميكي
+          // تحويل القيم الرقمية بأمان من قاعدة البيانات
           final double paidAmount =
               double.tryParse(appointment.paid.toString()) ?? 0.0;
           final double restAmount =
               double.tryParse(appointment.rest.toString()) ?? 0.0;
-          final double transport =
-              double.tryParse(appointment.transportFees.toString()) ?? 0.0;
 
-          final double memoriesPrice =
-              double.tryParse(appointment.memoriesCornerPrice.toString()) ??
-              0.0;
-          final double safesPrice =
-              double.tryParse(appointment.safesCornerPrice.toString()) ?? 0.0;
-          final double coversPrice =
-              double.tryParse(appointment.coversServicePrice.toString()) ?? 0.0;
-
-          // حساب السعر الإجمالي الكلي المحدث والشامل لكل شيء
-          final double totalOriginalPrice =
-              paidAmount +
-              restAmount +
-              transport +
-              memoriesPrice +
-              safesPrice +
-              coversPrice;
+          // 🌟 الإصلاح الجوهري للحساب: السعر الإجمالي الكلي الفعلي يساوي المدفوع + المتبقي
+          final double totalOriginalPrice = paidAmount + restAmount;
 
           String locationToDisplay = appointment.city;
           if (appointment.isRural) {
@@ -161,8 +146,9 @@ class DetailsAppScreen extends ConsumerWidget {
               locationToDisplay = "ريف - غير محدد";
             }
           }
+
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
+            padding: const EdgeInsets.all(10.0),
             child: Column(
               children: [
                 Card(
@@ -183,7 +169,6 @@ class DetailsAppScreen extends ConsumerWidget {
                         _buildDetailRow(
                           Icons.phone,
                           "الهاتف:",
-                          // 🌟 إضافة \u200E لضمان ظهور الرقم والرمز الدولي مرتبين من اليسار لليمين بدون انقلاب
                           "\u200E${_formatPhoneNumber(appointment.phone)}",
                         ),
                         _buildDetailRow(
@@ -206,30 +191,32 @@ class DetailsAppScreen extends ConsumerWidget {
                           "الوقت:",
                           formattedTime,
                         ),
-
-                        // 🌟 إضافة \u200E لكل أسعار العملات لتظهر بشكل صحيح (الرقم ثم $ وليس العكس)
+                        _buildDetailRow(
+                          Icons.people,
+                          "عدد الضيوف:",
+                          "${appointment.number} ضيف", // يجلب عدد الضيوف المخزن في الموديل
+                        ),
                         _buildDetailRow(
                           Icons.monetization_on,
                           "السعر الإجمالي:",
-                          "\u200E$totalOriginalPrice \$",
+                          "\u200E${totalOriginalPrice.toStringAsFixed(1)} \$",
                           isBold: true,
                         ),
                         _buildDetailRow(
                           Icons.money,
                           "المبلغ المدفوع:",
-                          "\u200E${appointment.paid} \$",
+                          "\u200E${paidAmount.toStringAsFixed(0)} \$",
                         ),
                         _buildDetailRow(
                           Icons.money_off,
                           "المبلغ المتبقي:",
-                          "\u200E${appointment.rest} \$",
+                          "\u200E${restAmount.toStringAsFixed(0)} \$",
                         ),
                         _buildDetailRow(
                           Icons.local_shipping,
                           "أجور النقل:",
                           "\u200E${appointment.transportFees} \$",
                         ),
-
                         _buildDetailRow(
                           Icons.star,
                           "ركن الذكريات:",
@@ -262,7 +249,7 @@ class DetailsAppScreen extends ConsumerWidget {
                     ),
                   ),
                 ),
-                const SizedBox(height: 30),
+                const SizedBox(height: 15),
                 SizedBox(
                   width: double.infinity,
                   height: 50,
@@ -303,7 +290,7 @@ class DetailsAppScreen extends ConsumerWidget {
     bool isBold = false,
   }) {
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 10.0),
+      padding: const EdgeInsets.symmetric(vertical: 8.0),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
