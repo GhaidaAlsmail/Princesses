@@ -39,7 +39,7 @@ class _AppointmentState extends ConsumerState<Appointment> {
       // حساب القيمة الأولية فور فتح الشاشة
       calculateAppointmentPricing(form);
 
-      // الاستماع لأي تغيير في قيم الفورم وحساب الباقي فورااااً
+      // الاستماع لأي تغيير في قيم الفورم وحساب الأسعار تلقائياً
       _formSubscription = form.valueChanges.listen((_) {
         calculateAppointmentPricing(form);
       });
@@ -125,20 +125,49 @@ class _AppointmentState extends ConsumerState<Appointment> {
                 const ContainerCardMoney(),
                 const Gap(20),
 
-                // عرض المبلغ الكامل الإجمالي بشكل ديناميكي ومباشر
+                //  عرض السعر الإجمالي الكلي المحدث تلقائياً وبدقة عالية
                 ReactiveFormConsumer(
                   builder: (context, formGroup, child) {
-                    final double rest =
+                    final double covers =
                         double.tryParse(
-                          formGroup.control('rest').value?.toString() ?? '0',
+                          formGroup
+                                  .control('coversServicePrice')
+                                  .value
+                                  ?.toString() ??
+                              '0',
                         ) ??
                         0.0;
-                    final double paid =
+                    final double memories =
                         double.tryParse(
-                          formGroup.control('paid').value?.toString() ?? '0',
+                          formGroup
+                                  .control('memoriesCornerPrice')
+                                  .value
+                                  ?.toString() ??
+                              '0',
                         ) ??
                         0.0;
-                    final double totalAmount = rest + paid;
+                    final double safes =
+                        double.tryParse(
+                          formGroup
+                                  .control('safesCornerPrice')
+                                  .value
+                                  ?.toString() ??
+                              '0',
+                        ) ??
+                        0.0;
+                    final double transport =
+                        double.tryParse(
+                          formGroup
+                                  .control('transportFees')
+                                  .value
+                                  ?.toString() ??
+                              '0',
+                        ) ??
+                        0.0;
+
+                    // مجموع المكونات الفعلي قبل خصم المدفوعات لتجنب المشاكل الحسابية بالواجهة
+                    final double totalAmount =
+                        covers + memories + safes + transport;
 
                     return Center(
                       child: Container(
@@ -188,7 +217,6 @@ class _AppointmentState extends ConsumerState<Appointment> {
                   child: ReactiveFormConsumer(
                     builder: (context, formGroup, child) {
                       return MyButton(
-                        // 🎯 هنا الفحص المباشر لعرض نص الانتظار
                         text: state.isLoading ? "جارٍ الحفظ..." : "حجز",
                         textColor: Colors.white,
                         width: 350,
@@ -197,8 +225,6 @@ class _AppointmentState extends ConsumerState<Appointment> {
                         onpressed: state.isLoading
                             ? null
                             : () async {
-                                // 🎯 تعطيل الزر أثناء التحميل لمنع النقرات المتكررة
-
                                 final computedTransportFees =
                                     calculateAppointmentPricing(form);
 
@@ -234,8 +260,6 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                   date: form.control("date").value as DateTime,
                                   number: form.control("number").value ?? '',
                                   email: form.control("email").value ?? '',
-                                  // paid: form.control("paid").value ?? '',
-                                  // rest: form.control("rest").value ?? '',
                                   hasMemoriesCorner:
                                       form.control("hasMemoriesCorner").value
                                           as bool? ??
@@ -250,7 +274,6 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                       false,
                                   isRural: isRuralValue,
                                   ruralLocation: ruralLocationValue,
-                                  // transportFees: computedTransportFees,
                                   transportFees: computedTransportFees,
                                   paid: form.control("paid").value ?? '0',
                                   rest: form.control("rest").value ?? '0',
@@ -282,22 +305,20 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                       ) ??
                                       0.0,
                                 );
+
                                 try {
                                   await notifier.add(appointment);
                                 } catch (e) {
-                                  // هنا ستلتقطين خطأ الـ Timeout وتمنعين تعليق الشاشة
                                   ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(
+                                    const SnackBar(
                                       content: Text(
                                         "فشل الاتصال بالشبكة، يرجى التحقق من الإنترنت.",
                                       ),
                                     ),
                                   );
+                                  return;
                                 }
-                                // 1️⃣ إرسال الطلب أولاً وانتظار انتهاء عملية الحفظ بالكامل في النوتيفاير
-                                // await notifier.add(appointment);
 
-                                // 2️⃣ فحص حالة الـ Provider الحالية بعد انتهاء تنفيذ الـ add مباشرة لضمان نجاح العملية قبل الخروج
                                 final currentState = ref.read(
                                   appointmentNotifierProvider,
                                 );
@@ -311,10 +332,9 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                       backgroundColor: Colors.red,
                                     ),
                                   );
-                                  return; // توقيف الدالة هنا في حال وجود خطأ وعدم تصفير البيانات
+                                  return;
                                 }
 
-                                // 3️⃣ إذا نجحت العملية (لم يحدث خطأ)، نكمل بقية الإجراءات بالتوالي:
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
                                     content: Text("تم حفظ الحجز بنجاح!"),
@@ -327,7 +347,6 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                   ),
                                 );
 
-                                // جدولة الإشعارات والعمليات الخلفية
                                 await NotificationService().schedulePartyReminders(
                                   partyId: appointment.id.toString(),
                                   title: "لديك موعد",
@@ -353,7 +372,6 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                   "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}",
                                 );
 
-                                // 4️⃣ تصفير البيانات بعد التأكد من اكتمال الحفظ بنجاح
                                 form.reset(
                                   value: {
                                     'phone': PhoneNumber(
@@ -374,7 +392,6 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                   removeFocus: true,
                                 );
 
-                                // 5️⃣ التوجيه الأخير إلى صفحة الحجوزات
                                 context.go("/reservations");
                               },
                         icon: Icons.app_registration_rounded,

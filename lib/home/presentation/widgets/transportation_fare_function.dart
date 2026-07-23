@@ -1,49 +1,70 @@
-// ignore_for_file: curly_braces_in_flow_control_structures
-
 import 'package:reactive_forms/reactive_forms.dart';
 
-// 1. جداول الأسعار الصريحة المستقلة (تطبق على كافة المدن وأريافها حالياً)
+// 1. جداول الأسعار الصريحة المستقلة
 const Map<String, Map<int, double>> basicPrices = {
-  'city': {100: 31.0, 150: 36.0, 200: 41.0, 250: 46.0},
+  'city': {
+    100: 31.0,
+    150: 36.0,
+    200: 41.0,
+    250: 46.0,
+    300: 51.0,
+    400: 61.0,
+    450: 66.0,
+    500: 71.0,
+  },
   'rural': {100: 36.0, 150: 41.0, 200: 46.0, 250: 51.0},
 };
 
 const Map<String, Map<int, double>> memoriesPrices = {
-  'city': {100: 36.0, 150: 41.0, 200: 46.0, 250: 51.0},
+  'city': {
+    100: 36.0,
+    150: 41.0,
+    200: 46.0,
+    250: 51.0,
+    300: 51.0,
+    400: 61.0,
+    450: 66.0,
+    500: 71.0,
+  },
   'rural': {100: 41.0, 150: 46.0, 200: 51.0, 250: 56.0},
 };
 
 const Map<String, Map<int, double>> safesPrices = {
-  'city': {100: 36.0, 150: 41.0, 200: 46.0, 250: 51.0},
+  'city': {
+    100: 36.0,
+    150: 41.0,
+    200: 46.0,
+    250: 51.0,
+    300: 51.0,
+    400: 61.0,
+    450: 66.0,
+    500: 71.0,
+  },
   'rural': {100: 41.0, 150: 46.0, 200: 51.0, 250: 56.0},
 };
 
-// 2. مصفوفة أجور النقل الشاملة لكافة أرياف المحافظات (أسعار مبدئية قابلة للتعديل)
+// 2. مصفوفة أجور النقل الشاملة لكافة أرياف المحافظات
 const Map<String, double> ruralTransportPrices = {
-  // ريف إدلب
-  'الدانا / كفرتخاريم': 36.0,
-  'سرمدا / أرمناز': 31.0,
-  'أريحا / سرمين': 20.0,
-  'جسر الشغور / دركوش': 40.0,
+  'الدانا': 36.0,
+  'سرمدا': 31.0,
+  'أريحا': 20.0,
+  'جسر الشغور': 40.0,
+  'كفرتخاريم': 36.0,
+  'أرمناز': 31.0,
+  'سرمين': 20.0,
+  'دركوش': 40.0,
   'الجانودية': 45.0,
-
-  // ريف حلب
   'ريف حلب الغربي': 35.0,
   'إعزاز': 40.0,
   'الباب': 45.0,
   'عفرين': 40.0,
-
-  // ريف حمص
   'الرستن': 30.0,
   'تلبيسة': 25.0,
   'الحولة': 35.0,
-
-  // ريف دمشق
   'الغوطة الشرقية': 30.0,
   'دوما': 35.0,
   'الكسوة': 40.0,
 };
-
 double calculateAppointmentPricing(FormGroup form) {
   // 1. جلب عدد الضيوف بأمان
   final numValue = form.control('number').value;
@@ -52,8 +73,8 @@ double calculateAppointmentPricing(FormGroup form) {
   final bool isRural = form.control('isRural').value as bool? ?? false;
   final String ruralLoc = form.control('ruralLocation').value?.toString() ?? '';
 
-  // 🌟 تعديل آمن: التأكد من جلب حالة السيارة، وإذا لم تكن موجودة نعتبرها true طالما أنه ريف وله أجور نقل
-  final bool hasCar = form.control('hasCar').value as bool? ?? true;
+  // خيار أجور النقل الاختياري حسب الزر بالواجهة
+  final bool hasCar = form.control('hasCar').value as bool? ?? false;
 
   final bool hasMemories =
       form.control('hasMemoriesCorner').value as bool? ?? false;
@@ -63,7 +84,7 @@ double calculateAppointmentPricing(FormGroup form) {
 
   final String locationKey = isRural ? 'rural' : 'city';
 
-  // 2. تحديد الفئة المستهدفة للضيوف
+  // 2. تحديد الفئة المستهدفة للضيوف بدقة
   int targetGuests = 100;
   if (guests <= 100) {
     targetGuests = 100;
@@ -71,8 +92,16 @@ double calculateAppointmentPricing(FormGroup form) {
     targetGuests = 150;
   } else if (guests <= 200) {
     targetGuests = 200;
-  } else {
+  } else if (guests <= 250) {
     targetGuests = 250;
+  } else if (guests <= 300) {
+    targetGuests = 300;
+  } else if (guests <= 400) {
+    targetGuests = 400;
+  } else if (guests <= 450) {
+    targetGuests = 450;
+  } else {
+    targetGuests = 500;
   }
 
   double totalPrice = 0.0;
@@ -100,7 +129,7 @@ double calculateAppointmentPricing(FormGroup form) {
     totalPrice += currentSafesPrice;
   }
 
-  // 7. جمع أجور النقل الشاملة
+  // 7. حساب أجور النقل بشكل اختياري تماماً بناءً على زر السيارة (hasCar)
   if (isRural && hasCar) {
     if (ruralTransportPrices.containsKey(ruralLoc)) {
       transportFees = ruralTransportPrices[ruralLoc]!;
@@ -109,24 +138,24 @@ double calculateAppointmentPricing(FormGroup form) {
       transportFees =
           double.tryParse(customFeesValue?.toString() ?? '0') ?? 0.0;
     }
-    totalPrice += transportFees;
+    totalPrice += transportFees; // إضافة أجور النقل إلى الإجمالي الكلي
   }
 
-  // 8. حساب المبلغ المتبقي بأمان
+  // 8. حساب المبلغ المتبقي بناءً على الإجمالي الشامل
   final paidValue = form.control('paid').value;
   final double paid = double.tryParse(paidValue?.toString() ?? '0') ?? 0.0;
 
   double restValue = totalPrice - paid;
+  if (restValue < 0) restValue = 0.0;
 
-  // 9. تحديث الحقول مباشرة في الـ Form وتمرير قيم صافية بدون تداخل دائرى
+  // 9. إسناد القيم بناءً على الأنواع الدقيقة لكل حقل في الـ FormGroup لمنع الـ TypeError
+
+  // حقل المتبقي (rest) معرّف كـ String
   form
       .control('rest')
-      .updateValue(
-        restValue < 0 ? '0' : restValue.toStringAsFixed(0),
-        emitEvent:
-            true, // 🌟 نضعها false هنا لمنع الدخول في حلقة استماع 무한 استدعاء (Infinite Loop)
-      );
+      .updateValue(restValue.toStringAsFixed(0), emitEvent: true);
 
+  // حقول الأسعار والأجور معرّفة كـ double
   form.control('transportFees').updateValue(transportFees, emitEvent: false);
   form
       .control('memoriesCornerPrice')
