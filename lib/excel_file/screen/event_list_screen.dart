@@ -244,35 +244,7 @@ class EventListScreen extends StatelessWidget {
                               padding: const EdgeInsets.all(10),
                             ),
                           ),
-                          // ElevatedButton.icon(
-                          //   onPressed: () {
-                          //     debugPrint(
-                          //       "🔄 الانتقال إلى جدول معازيم الحفلة: $eventName بـ ID: $eventId",
-                          //     );
-                          //     context.push('/attendees/$eventId');
-                          //   },
-                          //   icon: const Icon(Icons.people, size: 20),
-                          //   label: const Text(
-                          //     "جدول المعازيم",
-                          //     style: TextStyle(fontSize: 13),
-                          //   ),
-                          //   style: ElevatedButton.styleFrom(
-                          //     backgroundColor: const Color.fromARGB(
-                          //       255,
-                          //       204,
-                          //       69,
-                          //       145,
-                          //     ),
-                          //     foregroundColor: Colors.white,
-                          //     shape: RoundedRectangleBorder(
-                          //       borderRadius: BorderRadius.circular(10),
-                          //     ),
-                          //     padding: const EdgeInsets.symmetric(
-                          //       horizontal: 12,
-                          //       vertical: 10,
-                          //     ),
-                          //   ),
-                          // ),
+
                           const SizedBox(width: 8), // مسافة صغيرة بين الزرين
                           // 2. زر حذف الحفلة كأيقونة زهرية بعد زر عرض الجدول
                           IconButton(
