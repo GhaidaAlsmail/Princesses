@@ -3,12 +3,14 @@ import 'package:flutter_riverpod/legacy.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class AppNotification {
+  final String id;
   final String title;
   final String body;
   final DateTime date;
   final bool read;
 
   AppNotification({
+    required this.id,
     required this.title,
     required this.body,
     required this.date,
@@ -16,12 +18,14 @@ class AppNotification {
   });
 
   AppNotification copyWith({
+    String? id,
     String? title,
     String? body,
     DateTime? date,
     bool? read,
   }) {
     return AppNotification(
+      id: id ?? this.id,
       title: title ?? this.title,
       body: body ?? this.body,
       date: date ?? this.date,
@@ -30,6 +34,7 @@ class AppNotification {
   }
 
   Map<String, dynamic> toJson() => {
+    "id": id,
     "title": title,
     "body": body,
     "date": date.toIso8601String(),
@@ -38,15 +43,20 @@ class AppNotification {
 
   factory AppNotification.fromJson(Map<String, dynamic> json) {
     return AppNotification(
-      title: json["title"],
-      body: json["body"],
-      date: DateTime.parse(json["date"]),
+      id: json["id"] ?? DateTime.now().millisecondsSinceEpoch.toString(),
+      title: json["title"] ?? '',
+      body: json["body"] ?? '',
+      date: json["date"] != null
+          ? DateTime.parse(json["date"])
+          : DateTime.now(),
       read: json["read"] ?? false,
     );
   }
 }
 
 class NotificationsNotifier extends StateNotifier<List<AppNotification>> {
+  static const String _storageKey = "notifications_history";
+
   NotificationsNotifier() : super([]) {
     _loadFromStorage();
   }
@@ -84,7 +94,31 @@ class NotificationsNotifier extends StateNotifier<List<AppNotification>> {
   /// عدد الإشعارات غير المقروءة
   int unreadCount() => state.where((n) => !n.read).length;
 
-  /// ✅ دالة تعديل الإشعار عن طريق العنوان
+  /// ✅ تعديل الإشعار بدقة عبر الـ ID بدلاً من البحث باسم العنوان
+  Future<void> updateNotificationById({
+    required String id,
+    required String newTitle,
+    required String newBody,
+  }) async {
+    bool updated = false;
+
+    final newState = <AppNotification>[];
+    for (final n in state) {
+      if (n.id == id) {
+        newState.add(n.copyWith(title: newTitle, body: newBody));
+        updated = true;
+      } else {
+        newState.add(n);
+      }
+    }
+
+    if (updated) {
+      state = newState;
+      await _saveToStorage();
+    }
+  }
+
+  /// ✅ تعديل الإشعار عن طريق العنوان (للتوافق القديم إن وجد)
   Future<void> updateNotificationByTitle({
     required String title,
     required String newBody,
@@ -110,12 +144,12 @@ class NotificationsNotifier extends StateNotifier<List<AppNotification>> {
   Future<void> _saveToStorage() async {
     final prefs = await SharedPreferences.getInstance();
     final jsonList = state.map((n) => jsonEncode(n.toJson())).toList();
-    await prefs.setStringList("notifications", jsonList);
+    await prefs.setStringList(_storageKey, jsonList);
   }
 
   Future<void> _loadFromStorage() async {
     final prefs = await SharedPreferences.getInstance();
-    final savedList = prefs.getStringList("notifications");
+    final savedList = prefs.getStringList(_storageKey);
     if (savedList == null) return;
     state = savedList
         .map((s) => AppNotification.fromJson(jsonDecode(s)))

@@ -125,7 +125,7 @@ class _AppointmentState extends ConsumerState<Appointment> {
                 const ContainerCardMoney(),
                 const Gap(20),
 
-                //  عرض السعر الإجمالي الكلي المحدث تلقائياً وبدقة عالية
+                // عرض السعر الإجمالي الكلي المحدث تلقائياً وبدقة عالية
                 ReactiveFormConsumer(
                   builder: (context, formGroup, child) {
                     final double covers =
@@ -346,22 +346,25 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                     ),
                                   ),
                                 );
+                                final partyIdStr = appointment.id.toString();
+                                final notificationBody =
+                                    "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}";
 
-                                await NotificationService().schedulePartyReminders(
-                                  partyId: appointment.id.toString(),
-                                  title: "لديك موعد",
-                                  body:
-                                      "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}",
-                                  date: appointment.date,
-                                );
+                                await NotificationService()
+                                    .schedulePartyReminders(
+                                      partyId: partyIdStr,
+                                      title: "لديك موعد",
+                                      body: notificationBody,
+                                      date: appointment.date,
+                                    );
 
                                 ref
                                     .read(notificationsProvider.notifier)
                                     .addNotification(
                                       AppNotification(
+                                        id: partyIdStr,
                                         title: "لديك موعد",
-                                        body:
-                                            "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}",
+                                        body: notificationBody,
                                         date: DateTime.now(),
                                       ),
                                     );
@@ -369,7 +372,8 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                 await saveNotificationToHistory(
                                   appointment.id.hashCode,
                                   "لديك موعد",
-                                  "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}",
+                                  notificationBody,
+                                  customId: partyIdStr,
                                 );
 
                                 form.reset(

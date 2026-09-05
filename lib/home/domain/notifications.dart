@@ -1,329 +1,5 @@
-// //------------------------------1-----------------------------------------------
-// import 'dart:convert';
-// import 'package:princesses/core/global_navigator.dart';
-// import 'package:princesses/home/application/notification_provider.dart';
-// import 'package:firebase_messaging/firebase_messaging.dart';
-// import 'package:flutter/material.dart';
-// import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-// import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
-// import 'package:flutter_riverpod/flutter_riverpod.dart';
-// import 'package:permission_handler/permission_handler.dart';
-// import 'package:shared_preferences/shared_preferences.dart';
-// import 'package:timezone/data/latest_all.dart' as tz;
+// ignore_for_file: use_build_context_synchronously, avoid_print
 
-// /// Notification Service for party/event reminders
-// @pragma('vm:entry-point')
-// class NotificationService {
-//   // Singleton
-//   static final NotificationService _instance = NotificationService._internal();
-//   factory NotificationService() => _instance;
-//   NotificationService._internal();
-
-//   final FlutterLocalNotificationsPlugin _plugin =
-//       FlutterLocalNotificationsPlugin();
-
-//   static const String channelId = "party_channel";
-//   static const String channelName = "Party Reminders";
-//   static const String _storagePrefix = "alarm_";
-
-//   Future<void> init() async {
-//     tz.initializeTimeZones();
-//     await AndroidAlarmManager.initialize();
-
-//     const androidSettings = AndroidInitializationSettings(
-//       '@mipmap/ic_launcher',
-//     );
-//     const iosSettings = DarwinInitializationSettings();
-//     const settings = InitializationSettings(
-//       android: androidSettings,
-//       iOS: iosSettings,
-//     );
-
-//     await _plugin.initialize(settings: settings);
-
-//     await _createNotificationChannel();
-//     await _requestPermissions();
-//     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-//       WidgetsBinding.instance.addPostFrameCallback((_) async {
-//         final context = globalNavigatorKey.currentContext;
-//         if (context != null) {
-//           final container = ProviderScope.containerOf(context);
-//           final title =
-//               message.notification?.title ??
-//               message.data['title'] ??
-//               "بدون عنوان";
-//           final body =
-//               message.notification?.body ??
-//               message.data['body'] ??
-//               "بدون محتوى";
-
-//           final notification = AppNotification(
-//             title: title,
-//             body: body,
-//             date: DateTime.now(),
-//           );
-
-//           container
-//               .read(notificationsProvider.notifier)
-//               .addNotification(notification);
-
-//           // حفظ في التاريخ
-//           await _saveNotificationToHistory(notification.hashCode, title, body);
-//         }
-//       });
-//     });
-//   }
-
-//   Future<void> _createNotificationChannel() async {
-//     const AndroidNotificationChannel channel = AndroidNotificationChannel(
-//       channelId,
-//       channelName,
-//       importance: Importance.max,
-//     );
-
-//     final androidPlugin = _plugin
-//         .resolvePlatformSpecificImplementation<
-//           AndroidFlutterLocalNotificationsPlugin
-//         >();
-//     await androidPlugin?.createNotificationChannel(channel);
-//   }
-
-//   // -------------------------------------------------------------------------
-//   // Save and load alarm data in SharedPreferences
-//   // -------------------------------------------------------------------------
-//   static Future<void> _saveAlarmData(int id, String title, String body) async {
-//     final prefs = await SharedPreferences.getInstance();
-//     await prefs.setString(
-//       '$_storagePrefix$id',
-//       jsonEncode({"title": title, "body": body}),
-//     );
-//   }
-
-//   static Future<Map<String, String>> loadAlarmData(int id) async {
-//     final prefs = await SharedPreferences.getInstance();
-//     final jsonStr = prefs.getString('$_storagePrefix$id');
-
-//     if (jsonStr == null) return {"title": "تذكير", "body": ""};
-
-//     final map = jsonDecode(jsonStr) as Map<String, dynamic>;
-//     return {
-//       "title": map["title"]?.toString() ?? "تذكير",
-//       "body": map["body"]?.toString() ?? "",
-//     };
-//   }
-
-//   // -------------------------------------------------------------------------
-//   // Schedule a single alarm
-//   // -------------------------------------------------------------------------
-//   Future<void> scheduleExactAlarm({
-//     required int id,
-//     required DateTime time,
-//     required String title,
-//     required String body,
-//   }) async {
-//     if (time.isBefore(DateTime.now())) return;
-
-//     await _saveAlarmData(id, title, body);
-//     await Future.delayed(Duration(milliseconds: 100));
-
-//     await AndroidAlarmManager.oneShotAt(
-//       time,
-//       id,
-//       alarmCallback, // callback الخارجي
-//       wakeup: true,
-//       rescheduleOnReboot: true,
-//       exact: true,
-//       params: {"title": title, "body": body},
-//     );
-//   }
-
-//   Future<void> schedulePartyReminders({
-//     required String partyId,
-//     required String title,
-//     required String body,
-//     required DateTime date,
-//   }) async {
-//     final now = DateTime.now();
-
-//     final dayBefore = date.subtract(const Duration(days: 1));
-//     final hourBefore = date.subtract(const Duration(hours: 1));
-
-//     // قبل يوم
-//     if (dayBefore.isAfter(now)) {
-//       await scheduleExactAlarm(
-//         id: ("day_$partyId").hashCode,
-//         time: dayBefore,
-//         title: "$title (قبل يوم)",
-//         body: body,
-//       );
-//     }
-
-//     // قبل ساعة
-//     if (hourBefore.isAfter(now)) {
-//       await scheduleExactAlarm(
-//         id: ("hour_$partyId").hashCode,
-//         time: hourBefore,
-//         title: "$title (قبل ساعة)",
-//         body: body,
-//       );
-//     }
-
-//     // الإشعار الرئيسي في الموعد
-//     if (date.isAfter(now)) {
-//       await scheduleExactAlarm(
-//         id: ("party_$partyId").hashCode,
-//         time: date,
-//         title: title,
-//         body: body,
-//       );
-//     }
-//   }
-
-//   Future<void> updatePartyReminder({
-//     required String partyId,
-//     required String title,
-//     required String body,
-//     required DateTime date,
-//   }) async {
-//     await cancelPartyReminder(partyId);
-//     await schedulePartyReminders(
-//       partyId: partyId,
-//       title: title,
-//       body: body,
-//       date: date,
-//     );
-//   }
-
-//   Future<void> cancelPartyReminder(String partyId) async {
-//     await AndroidAlarmManager.cancel(("day_$partyId").hashCode);
-//     await AndroidAlarmManager.cancel(("hour_$partyId").hashCode);
-//     await AndroidAlarmManager.cancel(("party_$partyId").hashCode);
-//   }
-
-//   Future<void> _requestPermissions() async {
-//     // طلب إذن الإشعارات الأساسي (مهم لـ Android 13+)
-//     if (!await Permission.notification.isGranted) {
-//       await Permission.notification.request();
-//     }
-//   }
-
-//   Future<List<Map<String, dynamic>>> getNotificationHistory() async {
-//     final prefs = await SharedPreferences.getInstance();
-//     List<String> history = prefs.getStringList("notifications_history") ?? [];
-
-//     return history
-//         .map((e) => jsonDecode(e) as Map<String, dynamic>)
-//         .toList()
-//         .reversed
-//         .toList();
-//   }
-
-//   Future<void> saveNotificationToHistory(
-//     int id,
-//     String? title,
-//     String? body,
-//   ) async {
-//     final prefs = await SharedPreferences.getInstance();
-
-//     // جلب قائمة الإشعارات الحالية من التخزين
-//     List<String> history = prefs.getStringList("notifications_history") ?? [];
-
-//     // إنشاء إدخال جديد للإشعار
-//     final entry = jsonEncode({
-//       "id": id, // معرف فريد للإشعار
-//       "title": title ?? "بدون عنوان", // العنوان
-//       "body": body ?? "بدون محتوى", // محتوى الإشعار
-//       "time": DateTime.now().toIso8601String(), // توقيت الإشعار
-//     });
-
-//     // إضافة الإشعار الجديد للقائمة
-//     history.add(entry);
-
-//     // حفظ القائمة المحدثة في SharedPreferences
-//     await prefs.setStringList("notifications_history", history);
-//   }
-// }
-
-// @pragma("vm:entry-point")
-// Future<void> alarmCallback(int id, Map<String, dynamic> params) async {
-//   final plugin = FlutterLocalNotificationsPlugin();
-
-//   const settings = InitializationSettings(
-//     android: AndroidInitializationSettings('@mipmap/ic_launcher'),
-//     iOS: DarwinInitializationSettings(),
-//   );
-//   await plugin.initialize(settings: settings);
-
-//   final title = params["title"] ?? "تذكير";
-//   final body = params["body"] ?? "";
-//   await plugin.show(
-//     id: id,
-//     title: title,
-//     body: body,
-//     notificationDetails: const NotificationDetails(
-//       android: AndroidNotificationDetails(
-//         NotificationService.channelId,
-//         NotificationService.channelName,
-//         importance: Importance.max,
-//       ),
-//     ),
-//   );
-
-//   await _saveNotificationToHistory(id, title, body);
-// }
-
-// // @pragma("vm:entry-point")
-// // Future<void> alarmCallback(int id) async {
-// //   final FlutterLocalNotificationsPlugin plugin =
-// //       FlutterLocalNotificationsPlugin();
-
-// //   const androidSettings = AndroidInitializationSettings('@mipmap/ic_launcher');
-// //   const iosSettings = DarwinInitializationSettings();
-// //   const settings = InitializationSettings(
-// //     android: androidSettings,
-// //     iOS: iosSettings,
-// //   );
-
-// //   await plugin.initialize(settings);
-
-// //   final data = await NotificationService.loadAlarmData(id);
-
-// //   await plugin.show(
-// //     id,
-// //     data["title"],
-// //     data["body"],
-// //     const NotificationDetails(
-// //       android: AndroidNotificationDetails(
-// //         NotificationService.channelId,
-// //         NotificationService.channelName,
-// //         importance: Importance.max,
-// //         priority: Priority.high,
-// //       ),
-// //     ),
-// //   );
-
-// //   await _saveNotificationToHistory(id, data["title"], data["body"]);
-// // }
-
-// Future<void> _saveNotificationToHistory(
-//   int id,
-//   String? title,
-//   String? body,
-// ) async {
-//   final prefs = await SharedPreferences.getInstance();
-
-//   List<String> history = prefs.getStringList("notifications_history") ?? [];
-
-//   final entry = jsonEncode({
-//     "id": id,
-//     "title": title,
-//     "body": body,
-//     "time": DateTime.now().toIso8601String(),
-//   });
-
-//   history.add(entry);
-//   await prefs.setStringList("notifications_history", history);
-// }
 import 'dart:convert';
 import 'package:princesses/core/global_navigator.dart';
 import 'package:princesses/home/application/notification_provider.dart';
@@ -347,7 +23,8 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
-  static const String channelId = "party_channel";
+  static const String channelId =
+      "party_channel_v4"; // قناة جديدة بحجم أولوية أعلى
   static const String channelName = "Party Reminders";
   static const String _storagePrefix = "alarm_";
 
@@ -358,31 +35,56 @@ class NotificationService {
     const androidSettings = AndroidInitializationSettings(
       '@mipmap/ic_launcher',
     );
-    const iosSettings = DarwinInitializationSettings();
+    const iosSettings = DarwinInitializationSettings(
+      defaultPresentAlert: true,
+      defaultPresentSound: true,
+      defaultPresentBadge: true,
+    );
     const settings = InitializationSettings(
       android: androidSettings,
       iOS: iosSettings,
     );
 
     await _plugin.initialize(settings: settings);
-    await _createNotificationChannel();
-    await _requestPermissions();
 
+    // إنشاء القناة وتأكيد الأذونات فوراً
+    await _createNotificationChannel();
+    await requestLocalPermissions();
+
+    // تفعيل ظهور إشعارات Firebase في Foreground (المقدمة)
+    await FirebaseMessaging.instance
+        .setForegroundNotificationPresentationOptions(
+          alert: true,
+          badge: true,
+          sound: true,
+        );
+
+    // الاستماع لإشعارات Firebase عند فتح التطبيق
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final context = globalNavigatorKey.currentContext;
+
+        final title =
+            message.notification?.title ??
+            message.data['title'] ??
+            "بدون عنوان";
+        final body =
+            message.notification?.body ?? message.data['body'] ?? "بدون محتوى";
+        final notifId =
+            message.data['id']?.toString() ??
+            DateTime.now().millisecondsSinceEpoch.toString();
+
+        // إظهار إشعار النظام فوراً في البرداية
+        await showNotificationImmediately(
+          id: notifId.hashCode,
+          title: title,
+          body: body,
+        );
+
         if (context != null) {
           final container = ProviderScope.containerOf(context);
-          final title =
-              message.notification?.title ??
-              message.data['title'] ??
-              "بدون عنوان";
-          final body =
-              message.notification?.body ??
-              message.data['body'] ??
-              "بدون محتوى";
-
           final notification = AppNotification(
+            id: notifId,
             title: title,
             body: body,
             date: DateTime.now(),
@@ -392,8 +94,12 @@ class NotificationService {
               .read(notificationsProvider.notifier)
               .addNotification(notification);
 
-          // 🌟 استدعاء الدالة العامة بالأسفل لحفظ الإشعار المستلم فوراً
-          await saveNotificationToHistory(notification.hashCode, title, body);
+          await saveNotificationToHistory(
+            notification.hashCode,
+            title,
+            body,
+            customId: notifId,
+          );
         }
       });
     });
@@ -403,7 +109,11 @@ class NotificationService {
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       channelId,
       channelName,
-      importance: Importance.max,
+      description: 'تنبيهات مواعيد الحجوزات',
+      importance: Importance.max, // إجباري للظهور في البرداية مع تنبيه صوتي
+      playSound: true,
+      enableVibration: true,
+      showBadge: true,
     );
 
     final androidPlugin = _plugin
@@ -413,14 +123,49 @@ class NotificationService {
     await androidPlugin?.createNotificationChannel(channel);
   }
 
+  // إظهار الإشعار المباشر
+  Future<void> showNotificationImmediately({
+    required int id,
+    required String title,
+    required String body,
+  }) async {
+    await _plugin.show(
+      id: id,
+      title: title,
+      body: body,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          channelId,
+          channelName,
+          channelDescription: 'تنبيهات مواعيد الحجوزات',
+          importance: Importance.max, // إجباري
+          priority: Priority.max, // إجباري للتنبيه المنبثق والبرداية
+          playSound: true,
+          enableVibration: true,
+          visibility: NotificationVisibility.public,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+    );
+  }
+
   // -------------------------------------------------------------------------
   // Save and load alarm data in SharedPreferences
   // -------------------------------------------------------------------------
-  static Future<void> _saveAlarmData(int id, String title, String body) async {
+  static Future<void> _saveAlarmData(
+    int id,
+    String title,
+    String body, {
+    String? partyId,
+  }) async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setString(
       '$_storagePrefix$id',
-      jsonEncode({"title": title, "body": body}),
+      jsonEncode({"title": title, "body": body, "partyId": partyId ?? ""}),
     );
   }
 
@@ -428,12 +173,13 @@ class NotificationService {
     final prefs = await SharedPreferences.getInstance();
     final jsonStr = prefs.getString('$_storagePrefix$id');
 
-    if (jsonStr == null) return {"title": "تذكير", "body": ""};
+    if (jsonStr == null) return {"title": "تذكير", "body": "", "partyId": ""};
 
     final map = jsonDecode(jsonStr) as Map<String, dynamic>;
     return {
       "title": map["title"]?.toString() ?? "تذكير",
       "body": map["body"]?.toString() ?? "",
+      "partyId": map["partyId"]?.toString() ?? "",
     };
   }
 
@@ -445,10 +191,11 @@ class NotificationService {
     required DateTime time,
     required String title,
     required String body,
+    String? partyId,
   }) async {
     if (time.isBefore(DateTime.now())) return;
 
-    await _saveAlarmData(id, title, body);
+    await _saveAlarmData(id, title, body, partyId: partyId);
     await Future.delayed(const Duration(milliseconds: 100));
 
     await AndroidAlarmManager.oneShotAt(
@@ -458,6 +205,7 @@ class NotificationService {
       wakeup: true,
       rescheduleOnReboot: true,
       exact: true,
+      alarmClock: true, // يضمن تنفيذ المنبه بدقة متناهية وفي البرداية
     );
   }
 
@@ -479,6 +227,7 @@ class NotificationService {
         time: dayBefore,
         title: "$title (قبل يوم)",
         body: body,
+        partyId: partyId,
       );
     }
 
@@ -489,6 +238,7 @@ class NotificationService {
         time: hourBefore,
         title: "$title (قبل ساعة)",
         body: body,
+        partyId: partyId,
       );
     }
 
@@ -499,6 +249,7 @@ class NotificationService {
         time: date,
         title: title,
         body: body,
+        partyId: partyId,
       );
     }
   }
@@ -524,10 +275,25 @@ class NotificationService {
     await AndroidAlarmManager.cancel(("party_$partyId").hashCode);
   }
 
-  Future<void> _requestPermissions() async {
-    if (!await Permission.notification.isGranted) {
+  /// طلب أذونات الإشعارات والمنبهات من الجهاز
+  Future<void> requestLocalPermissions() async {
+    // 1. طلب إذن الإشعارات العام (Android 13+)
+    if (await Permission.notification.isDenied) {
       await Permission.notification.request();
     }
+
+    // 2. طلب إذن المنبهات الدقيقة (Schedule Exact Alarm)
+    if (await Permission.scheduleExactAlarm.isDenied) {
+      await Permission.scheduleExactAlarm.request();
+    }
+
+    // 3. طلب الأذونات عبر Flutter Local Notifications Plugin
+    final androidPlugin = _plugin
+        .resolvePlatformSpecificImplementation<
+          AndroidFlutterLocalNotificationsPlugin
+        >();
+    await androidPlugin?.requestNotificationsPermission();
+    await androidPlugin?.requestExactAlarmsPermission();
   }
 
   Future<List<Map<String, dynamic>>> getNotificationHistory() async {
@@ -548,6 +314,8 @@ class NotificationService {
 
 @pragma("vm:entry-point")
 Future<void> alarmCallback(int id) async {
+  print("🚨🚨 ALARM CALLBACK اشتغل! ID = $id");
+
   final plugin = FlutterLocalNotificationsPlugin();
 
   const settings = InitializationSettings(
@@ -556,9 +324,26 @@ Future<void> alarmCallback(int id) async {
   );
   await plugin.initialize(settings: settings);
 
+  // إعداد القناة لضمان الإنشاء إذا انطلقت العملية والخلفية مغلقة تماماً
+  const AndroidNotificationChannel channel = AndroidNotificationChannel(
+    NotificationService.channelId,
+    NotificationService.channelName,
+    description: 'تنبيهات مواعيد الحجوزات',
+    importance: Importance.max,
+    playSound: true,
+    enableVibration: true,
+  );
+
+  final androidPlugin = plugin
+      .resolvePlatformSpecificImplementation<
+        AndroidFlutterLocalNotificationsPlugin
+      >();
+  await androidPlugin?.createNotificationChannel(channel);
+
   final data = await NotificationService.loadAlarmData(id);
   final title = data["title"] ?? "تذكير";
   final body = data["body"] ?? "";
+  final partyId = data["partyId"];
 
   await plugin.show(
     id: id,
@@ -568,27 +353,40 @@ Future<void> alarmCallback(int id) async {
       android: AndroidNotificationDetails(
         NotificationService.channelId,
         NotificationService.channelName,
-        importance: Importance.max,
-        priority: Priority.high,
+        channelDescription: 'تنبيهات مواعيد الحجوزات',
+        importance: Importance.max, // أقصى أولوية لظهور البرداية
+        priority: Priority.max,
+        playSound: true,
+        enableVibration: true,
+        visibility: NotificationVisibility.public,
+      ),
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
       ),
     ),
   );
 
-  await saveNotificationToHistory(id, title, body);
+  await saveNotificationToHistory(id, title, body, customId: partyId);
 }
 
-// 🌟 الدالة الموحدة والمستخدمة في كل الملف لحفظ التاريخ
-// إزالة الـ (_) تجعل الدالة مكشوفة لكل الملفات التي تعمل import للملف
+// الدالة الموحدة لحفظ السجل
 Future<void> saveNotificationToHistory(
   int id,
   String? title,
-  String? body,
-) async {
+  String? body, {
+  String? customId,
+}) async {
   final prefs = await SharedPreferences.getInstance();
   List<String> history = prefs.getStringList("notifications_history") ?? [];
 
+  final String notificationId = (customId != null && customId.isNotEmpty)
+      ? customId
+      : id.toString();
+
   final entry = jsonEncode({
-    "id": id,
+    "id": notificationId,
     "title": title ?? "بدون عنوان",
     "body": body ?? "بدون محتوى",
     "time": DateTime.now().toIso8601String(),

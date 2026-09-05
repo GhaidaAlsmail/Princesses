@@ -62,6 +62,9 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
         data: (_) {
           BotToast.closeAllLoading();
           BotToast.showText(text: "تم حفظ التعديلات بنجاح");
+          if (context.mounted) {
+            context.go("/reservation-details/${widget.appId}");
+          }
         },
         error: (e, st) {
           BotToast.closeAllLoading();
@@ -116,7 +119,6 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
           ),
           actions: const [SizedBox(width: 48)],
         ),
-        // 🌟 إلغاء التمديد العشوائي لجعل الـ Body يبدأ إجبارياً من تحت حافة الـ AppBar السفلى
         extendBodyBehindAppBar: false,
         body: appAsync.when(
           data: (app) {
@@ -124,7 +126,7 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
               return const Center(child: Text("Appointment not found!"));
             }
 
-            /// ✔ ملء الحقول بالبيانات المتاحة داخل الـ Model لمنع أخطاء الـ Getters
+            /// ملء الحقول بالبيانات المتاحة داخل الـ Model
             if (!form.control("name").touched) {
               PhoneNumber? parsedPhone;
               try {
@@ -145,31 +147,22 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                 "paid": app.paid,
                 "rest": app.rest,
                 "date": app.date,
-
-                // حقن المتغيرات المتطابقة تماماً مع الـ Model الخاص بكِ
                 "isRural": app.isRural,
                 "ruralLocation": app.ruralLocation,
                 "hasMemoriesCorner": app.hasMemoriesCorner,
                 "hasSafesCorner": app.hasSafesCorner,
-                // "transportFees": app.transportFees,
-
-                // // قيمة افتراضية لحقل السيارة داخل الفورم بناءً على أجور النقل السابقة
-                // "hasCar": app.transportFees > 0,
                 "hasCoversService": app.hasCoversService,
                 "transportFees": app.transportFees,
                 "memoriesCornerPrice": app.memoriesCornerPrice,
                 "safesCornerPrice": app.safesCornerPrice,
                 "coversServicePrice": app.coversServicePrice,
-
                 "hasCar": app.transportFees > 0,
               });
 
-              // تفعيل نظام المراقبة التلقائي فور حقن البيانات
               _setupFormListener(form);
             }
 
             return SingleChildScrollView(
-              // حشوة متناسقة ومريحة للبيانات التي تبدأ الآن من تحت الـ AppBar تماماً
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
               child: ReactiveForm(
                 formGroup: form,
@@ -215,8 +208,6 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                 number: form.control("number").value,
                                 paid: form.control("paid").value,
                                 rest: form.control("rest").value,
-
-                                // المتغيرات المتوافقة مع الـ Model
                                 isRural:
                                     form.control("isRural").value as bool? ??
                                     false,
@@ -235,9 +226,7 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                         as bool? ??
                                     false,
                                 hasCoversService:
-                                    form
-                                            .control("hasCoversService")
-                                            .value // 👈 تم إضافته
+                                    form.control("hasCoversService").value
                                         as bool? ??
                                     false,
                                 transportFees:
@@ -276,7 +265,7 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
 
                               await notifier.update(updatedApp);
 
-                              // ----------------------- اشعارات ---------------------
+                              // ----------------------- التنبيهات المحلية ---------------------
                               await NotificationService().updatePartyReminder(
                                 partyId: updatedApp.id.toString(),
                                 title: updatedApp.name,
@@ -285,6 +274,7 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                 date: updatedApp.date,
                               );
 
+                              // ----------------------- سجل الإشعارات داخل التطبيق ---------------------
                               final notificationsNotifier = ref.read(
                                 notificationsProvider.notifier,
                               );
@@ -294,18 +284,25 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                               final bodyText =
                                   "موعدك في ${updatedApp.place} مع ${updatedApp.name} تاريخ ${updatedApp.date}";
 
-                              await notificationsNotifier
-                                  .updateNotificationByTitle(
-                                    title: "لديك موعد",
-                                    newBody: bodyText,
+                              // البحث عن الإشعار المرتبط بهذا الحجز تحديداً عبر id الحجز
+                              final existingNotificationIndex =
+                                  currentNotifications.indexWhere(
+                                    (n) => n.id == updatedApp.id.toString(),
                                   );
 
-                              final exists = currentNotifications.any(
-                                (n) => n.title == "لديك موعد",
-                              );
-                              if (!exists) {
+                              if (existingNotificationIndex != -1) {
+                                // تحديث الإشعار المنسوب لهذا الحجز بعينه
+                                await notificationsNotifier
+                                    .updateNotificationById(
+                                      id: updatedApp.id.toString(),
+                                      newTitle: "لديك موعد",
+                                      newBody: bodyText,
+                                    );
+                              } else {
+                                // إضافة إشعار جديد مخصص لهذا الحجز برقم الـ id الخاص به
                                 await notificationsNotifier.addNotification(
                                   AppNotification(
+                                    id: updatedApp.id.toString(),
                                     title: "لديك موعد",
                                     body: bodyText,
                                     date: DateTime.now(),
@@ -313,8 +310,8 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                 );
                               }
 
-                              if (!context.mounted) return;
                               context.go("/reservations");
+                              // if (!context.mounted) return;
                             },
                             icon: Icons.app_registration_rounded,
                           );

@@ -48,7 +48,11 @@ Future<void> main() async {
     BotToast.closeAllLoading();
   }
 
+  // 1. تهيئة خدمة الإشعارات المحلية
   await NotificationService().init();
+
+  // 2. طلب إذن الإشعارات للأندرويد 13+ و iOS صراحةً من الخدمة المحلية
+  await NotificationService().requestLocalPermissions();
   usePathUrlStrategy();
 
   // تحميل الترجمات

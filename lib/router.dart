@@ -9,6 +9,7 @@ import 'package:princesses/excel_file/screen/event_import_screen.dart';
 import 'package:princesses/excel_file/screen/event_list_screen.dart';
 import 'package:princesses/excel_file/screen/qr_screen.dart';
 import 'package:princesses/home/presentation/screens/appointment.dart';
+import 'package:princesses/home/presentation/screens/details_screen.dart';
 import 'package:princesses/home/presentation/screens/edit_screen.dart';
 import 'package:princesses/admin/presentation/screens/admin_screen.dart';
 import 'package:princesses/home/presentation/screens/notification_screen.dart';
@@ -48,6 +49,14 @@ final router = Provider<GoRouter>((ref) {
       GoRoute(
         path: "/reservations",
         builder: (context, state) => const ReservationScreen(),
+      ),
+      GoRoute(
+        path: '/reservation-details/:appId',
+        builder: (context, state) {
+          // التقاط الـ appId من الـ pathParameters
+          final appId = state.pathParameters['appId']!;
+          return DetailsAppScreen(appId: appId);
+        },
       ),
       GoRoute(
         path: "/notifications",
