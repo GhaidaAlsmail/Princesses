@@ -7,8 +7,17 @@ class NotificationsPage extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final notifications = ref.watch(notificationsProvider);
+    final rawNotifications = ref.watch(notificationsProvider);
 
+    // إزالة العناصر المكررة بناءً على n.id
+    final notifications = <AppNotification>[];
+    final seenIds = <String>{};
+
+    for (var n in rawNotifications) {
+      if (seenIds.add(n.id)) {
+        notifications.add(n);
+      }
+    }
     return Scaffold(
       appBar: AppBar(
         title: Text("الإشعارات"),
@@ -56,12 +65,23 @@ class NotificationsPage extends ConsumerWidget {
                           },
                         ),
                         // زر حذف الإشعار
+                        // IconButton(
+                        //   icon: Icon(Icons.delete, color: Colors.grey),
+                        //   onPressed: () {
+                        //     ref
+                        //         .read(notificationsProvider.notifier)
+                        //         .deleteNotification(index);
+                        //   },
+                        // ),
+                        // في صفحة NotificationsPage:
                         IconButton(
-                          icon: Icon(Icons.delete, color: Colors.grey),
+                          icon: const Icon(Icons.delete, color: Colors.grey),
                           onPressed: () {
                             ref
                                 .read(notificationsProvider.notifier)
-                                .deleteNotification(index);
+                                .deleteNotificationById(
+                                  n.id,
+                                ); // التمرير عبر id بدلاً من index
                           },
                         ),
                       ],

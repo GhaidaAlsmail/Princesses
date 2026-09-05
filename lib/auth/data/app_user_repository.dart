@@ -8,4 +8,5 @@ abstract class AppUserRepository {
   Future<AppUser?> getUserByEmail({required String email});
   Stream<AppUser?> streamUserById({required String id});
   Future<List<AppUser>> getAllUsers();
+  Future<void> saveUserFcmToken(String userId);
 }

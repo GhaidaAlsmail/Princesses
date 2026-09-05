@@ -159,7 +159,7 @@ class SignUpScreen extends ConsumerWidget {
                       child: Text('حلب', style: TextStyle(fontFamily: "Amiri")),
                     ),
                     DropdownMenuItem(
-                      value: 'Homs',
+                      value: 'homs',
                       child: Text('حمص', style: TextStyle(fontFamily: "Amiri")),
                     ),
                     DropdownMenuItem(

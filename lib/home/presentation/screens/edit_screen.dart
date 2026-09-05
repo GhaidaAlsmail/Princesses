@@ -4,6 +4,8 @@ import 'dart:async';
 import 'package:princesses/core/presentation/widgets/button.dart';
 import 'package:princesses/home/application/app_provider.dart';
 import 'package:princesses/home/application/appointment_provider.dart';
+import 'package:princesses/home/application/booking_notification_helper.dart';
+import 'package:princesses/home/application/current_user_provider.dart';
 import 'package:princesses/home/application/notification_provider.dart';
 import 'package:princesses/home/domain/notifications.dart';
 import 'package:princesses/home/presentation/widgets/container_card.dart';
@@ -98,7 +100,7 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
               if (context.canPop()) {
                 context.pop();
               } else {
-                context.go("/reservations");
+                context.push("/reservations");
               }
             },
             icon: Icon(
@@ -264,7 +266,6 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                               );
 
                               await notifier.update(updatedApp);
-
                               // ----------------------- التنبيهات المحلية ---------------------
                               await NotificationService().updatePartyReminder(
                                 partyId: updatedApp.id.toString(),
@@ -272,6 +273,23 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                 body:
                                     "موعدك في ${updatedApp.place} مع ${updatedApp.name}",
                                 date: updatedApp.date,
+                              );
+
+                              // ----------------------- إشعارات شبكة Firebase (FCM) ---------------------
+                              final currentUser = ref
+                                  .read(currentUserProvider)
+                                  .value;
+                              final bool isCreatedByAdmin =
+                                  currentUser?.isAdmin ?? false;
+
+                              await BookingNotificationHelper.onNewBookingCreated(
+                                assignedUserId: currentUser?.id ?? "",
+                                bookingTitle:
+                                    "تم تعديل حجز: ${updatedApp.name}",
+                                bookingDetails:
+                                    "المكان: ${updatedApp.place} - التاريخ: ${updatedApp.date}",
+                                isCreatedByAdmin: isCreatedByAdmin,
+                                city: updatedApp.city,
                               );
 
                               // ----------------------- سجل الإشعارات داخل التطبيق ---------------------
@@ -309,8 +327,52 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                   ),
                                 );
                               }
+                              // // ----------------------- التنبيهات المحلية ---------------------
+                              // await NotificationService().updatePartyReminder(
+                              //   partyId: updatedApp.id.toString(),
+                              //   title: updatedApp.name,
+                              //   body:
+                              //       "موعدك في ${updatedApp.place} مع ${updatedApp.name}",
+                              //   date: updatedApp.date,
+                              // );
 
-                              context.go("/reservations");
+                              // // ----------------------- سجل الإشعارات داخل التطبيق ---------------------
+                              // final notificationsNotifier = ref.read(
+                              //   notificationsProvider.notifier,
+                              // );
+                              // final currentNotifications = ref.read(
+                              //   notificationsProvider,
+                              // );
+                              // final bodyText =
+                              //     "موعدك في ${updatedApp.place} مع ${updatedApp.name} تاريخ ${updatedApp.date}";
+
+                              // // البحث عن الإشعار المرتبط بهذا الحجز تحديداً عبر id الحجز
+                              // final existingNotificationIndex =
+                              //     currentNotifications.indexWhere(
+                              //       (n) => n.id == updatedApp.id.toString(),
+                              //     );
+
+                              // if (existingNotificationIndex != -1) {
+                              //   // تحديث الإشعار المنسوب لهذا الحجز بعينه
+                              //   await notificationsNotifier
+                              //       .updateNotificationById(
+                              //         id: updatedApp.id.toString(),
+                              //         newTitle: "لديك موعد",
+                              //         newBody: bodyText,
+                              //       );
+                              // } else {
+                              //   // إضافة إشعار جديد مخصص لهذا الحجز برقم الـ id الخاص به
+                              //   await notificationsNotifier.addNotification(
+                              //     AppNotification(
+                              //       id: updatedApp.id.toString(),
+                              //       title: "لديك موعد",
+                              //       body: bodyText,
+                              //       date: DateTime.now(),
+                              //     ),
+                              //   );
+                              // }
+
+                              // context.go("/reservations");
                               // if (!context.mounted) return;
                             },
                             icon: Icons.app_registration_rounded,

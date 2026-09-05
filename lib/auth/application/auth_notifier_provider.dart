@@ -13,6 +13,23 @@ class AuthNotifier extends StateNotifier<AppUser?> {
   final AuthService authService;
   final AppUserService appUserServices;
 
+  // AuthNotifier(this.authService, this.appUserServices) : super(null) {
+  //   authService.authStateChanges.listen((user) async {
+  //     if (user == null) {
+  //       state = null;
+  //       return;
+  //     }
+
+  //     if (user.providerData.any((p) => p.providerId == "password")) {
+  //       if (!user.emailVerified) {
+  //         state = null;
+  //         return;
+  //       }
+  //     }
+
+  //     state = await appUserServices.getAccountByEmail(user.email ?? "-");
+  //   });
+  // }
   AuthNotifier(this.authService, this.appUserServices) : super(null) {
     authService.authStateChanges.listen((user) async {
       if (user == null) {
@@ -28,6 +45,11 @@ class AuthNotifier extends StateNotifier<AppUser?> {
       }
 
       state = await appUserServices.getAccountByEmail(user.email ?? "-");
+
+      // 🌟 تحديث الـ Token في حال كان المستخدم مسجلاً لدخوله سابقاً
+      if (state?.id != null && state!.id!.isNotEmpty) {
+        await appUserServices.saveUserFcmToken(state!.id!);
+      }
     });
   }
   Future<UserCredential?> createUserWithEmailAndPassword(
@@ -106,6 +128,10 @@ class AuthNotifier extends StateNotifier<AppUser?> {
 
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString("userId", state?.id ?? "");
+
+      if (state?.id != null && state!.id!.isNotEmpty) {
+        await appUserServices.saveUserFcmToken(state!.id!);
+      }
 
       await FirebaseMessaging.instance.subscribeToTopic('all_users');
       BotToast.closeAllLoading();

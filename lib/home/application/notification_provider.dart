@@ -118,6 +118,16 @@ class NotificationsNotifier extends StateNotifier<List<AppNotification>> {
     }
   }
 
+  // 1. حذف إشعار بواسطة الـ ID الخاص به
+  void deleteNotificationById(String id) {
+    state = state.where((notification) => notification.id != id).toList();
+  }
+
+  // 2. حذف الإشعار المرتبط بموعد معينة (Party/Appointment ID)
+  void removeByPartyId(String partyId) {
+    state = state.where((notification) => notification.id != partyId).toList();
+  }
+
   /// ✅ تعديل الإشعار عن طريق العنوان (للتوافق القديم إن وجد)
   Future<void> updateNotificationByTitle({
     required String title,

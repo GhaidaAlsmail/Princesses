@@ -27,7 +27,7 @@ const Map<String, List<String>> ruralLocationsByCity = {
   //   'الجانودية',
   // ],
   'aleppo': ['ريف حلب الغربي', 'إعزاز', 'الباب', 'عفرين'],
-  'Homs': ['الرستن', 'تلبيسة', 'الحولة'],
+  'homs': ['الرستن', 'تلبيسة', 'الحولة'],
   'Damascus': ['الغوطة الشرقية', 'دوما', 'الكسوة'],
 };
 
@@ -94,7 +94,7 @@ class _ContainerCardDateState extends State<ContainerCardDate> {
                 child: Text('حلب', style: TextStyle(fontFamily: "Amiri")),
               ),
               DropdownMenuItem(
-                value: 'Homs',
+                value: 'homs',
                 child: Text('حمص', style: TextStyle(fontFamily: "Amiri")),
               ),
               DropdownMenuItem(

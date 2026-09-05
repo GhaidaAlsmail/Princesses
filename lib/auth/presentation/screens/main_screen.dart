@@ -167,6 +167,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                         email,
                                         password,
                                       );
+
                                   context.go("/home");
                                   //formGroup.reset();
                                 },
@@ -277,7 +278,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                       id: user.uid,
                                       email: user.email!,
                                       name: user.displayName ?? "",
-                                      city: 'Homs',
+                                      city: 'homs',
                                     ),
                                   );
                                 }
@@ -326,7 +327,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       ],
                     ),
                     Gap(12),
-                    Text("develpoved by Gh.AlS version: 1.1.0+2"),
+                    Text("Develpoved by Gh.AlS version: 1.2.0+5"),
                   ],
                 ),
               ),

@@ -3,6 +3,7 @@
 import 'dart:async';
 import 'package:princesses/core/presentation/widgets/button.dart';
 import 'package:princesses/home/application/appointment_provider.dart';
+import 'package:princesses/home/application/booking_notification_helper.dart';
 import 'package:princesses/home/application/current_user_provider.dart';
 import 'package:princesses/home/application/notification_provider.dart';
 import 'package:princesses/home/domain/appointment_model.dart';
@@ -309,6 +310,7 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                 try {
                                   await notifier.add(appointment);
                                 } catch (e) {
+                                  if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
@@ -322,8 +324,8 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                 final currentState = ref.read(
                                   appointmentNotifierProvider,
                                 );
-
                                 if (currentState.hasError) {
+                                  if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     SnackBar(
                                       content: Text(
@@ -334,6 +336,25 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                   );
                                   return;
                                 }
+
+                                // فحص حالة المستخدم الحالي (هل هو أدمن؟)
+                                final currentUser = ref
+                                    .read(currentUserProvider)
+                                    .value;
+                                final bool isCreatedByAdmin =
+                                    currentUser?.isAdmin ?? false;
+
+                                // إرسال إشعار الـ FCM للسيرفر
+                                await BookingNotificationHelper.onNewBookingCreated(
+                                  assignedUserId: currentUser?.id ?? "",
+                                  bookingTitle: appointment.name,
+                                  bookingDetails:
+                                      "المكان: ${appointment.place} - التاريخ: ${appointment.date}",
+                                  isCreatedByAdmin: isCreatedByAdmin,
+                                  city: appointment.city,
+                                );
+
+                                if (!context.mounted) return;
 
                                 ScaffoldMessenger.of(context).showSnackBar(
                                   const SnackBar(
@@ -346,6 +367,8 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                     ),
                                   ),
                                 );
+
+                                // التنبيهات المحلية وسجل التطبيق الفردي
                                 final partyIdStr = appointment.id.toString();
                                 final notificationBody =
                                     "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}";
@@ -396,10 +419,195 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                   removeFocus: true,
                                 );
 
+                                if (!context.mounted) return;
                                 context.go("/reservations");
                               },
                         icon: Icons.app_registration_rounded,
                       );
+                      // return MyButton(
+                      //   text: state.isLoading ? "جارٍ الحفظ..." : "حجز",
+                      //   textColor: Colors.white,
+                      //   width: 350,
+                      //   iconColor: Colors.white,
+                      //   fillColor: Theme.of(context).colorScheme.secondary,
+                      //   onpressed: state.isLoading
+                      //       ? null
+                      //       : () async {
+                      //           final computedTransportFees =
+                      //               calculateAppointmentPricing(form);
+
+                      //           bool isRuralValue =
+                      //               form.control("isRural").value as bool? ??
+                      //               false;
+                      //           String ruralLocationValue =
+                      //               form.control("ruralLocation").value ?? '';
+                      //           String customRural =
+                      //               form.control("customRuralLocation").value ??
+                      //               '';
+
+                      //           if (isRuralValue &&
+                      //               (ruralLocationValue == 'غير ذلك' ||
+                      //                   ruralLocationValue.isEmpty)) {
+                      //             if (customRural.isNotEmpty) {
+                      //               ruralLocationValue = customRural;
+                      //             }
+                      //           }
+
+                      //           final appointment = AppointmentModel(
+                      //             id: DateTime.now().millisecondsSinceEpoch
+                      //                 .toString(),
+                      //             name: form.control("name").value ?? '',
+                      //             place: form.control("place").value ?? '',
+                      //             mediator:
+                      //                 form.control("mediator").value ?? '',
+                      //             city: form.control("city").value ?? '',
+                      //             notes: form.control("notes").value ?? '',
+                      //             phone:
+                      //                 form.control("phone").value?.toString() ??
+                      //                 '',
+                      //             date: form.control("date").value as DateTime,
+                      //             number: form.control("number").value ?? '',
+                      //             email: form.control("email").value ?? '',
+                      //             hasMemoriesCorner:
+                      //                 form.control("hasMemoriesCorner").value
+                      //                     as bool? ??
+                      //                 false,
+                      //             hasSafesCorner:
+                      //                 form.control("hasSafesCorner").value
+                      //                     as bool? ??
+                      //                 false,
+                      //             hasCoversService:
+                      //                 form.control("hasCoversService").value
+                      //                     as bool? ??
+                      //                 false,
+                      //             isRural: isRuralValue,
+                      //             ruralLocation: ruralLocationValue,
+                      //             transportFees: computedTransportFees,
+                      //             paid: form.control("paid").value ?? '0',
+                      //             rest: form.control("rest").value ?? '0',
+                      //             memoriesCornerPrice:
+                      //                 double.tryParse(
+                      //                   form
+                      //                           .control('memoriesCornerPrice')
+                      //                           .value
+                      //                           ?.toString() ??
+                      //                       '0',
+                      //                 ) ??
+                      //                 0.0,
+                      //             safesCornerPrice:
+                      //                 double.tryParse(
+                      //                   form
+                      //                           .control('safesCornerPrice')
+                      //                           .value
+                      //                           ?.toString() ??
+                      //                       '0',
+                      //                 ) ??
+                      //                 0.0,
+                      //             coversServicePrice:
+                      //                 double.tryParse(
+                      //                   form
+                      //                           .control('coversServicePrice')
+                      //                           .value
+                      //                           ?.toString() ??
+                      //                       '0',
+                      //                 ) ??
+                      //                 0.0,
+                      //           );
+
+                      //           try {
+                      //             await notifier.add(appointment);
+                      //           } catch (e) {
+                      //             ScaffoldMessenger.of(context).showSnackBar(
+                      //               const SnackBar(
+                      //                 content: Text(
+                      //                   "فشل الاتصال بالشبكة، يرجى التحقق من الإنترنت.",
+                      //                 ),
+                      //               ),
+                      //             );
+                      //             return;
+                      //           }
+
+                      //           final currentState = ref.read(
+                      //             appointmentNotifierProvider,
+                      //           );
+
+                      //           if (currentState.hasError) {
+                      //             ScaffoldMessenger.of(context).showSnackBar(
+                      //               SnackBar(
+                      //                 content: Text(
+                      //                   "حدث خطأ: ${currentState.error}",
+                      //                 ),
+                      //                 backgroundColor: Colors.red,
+                      //               ),
+                      //             );
+                      //             return;
+                      //           }
+
+                      //           ScaffoldMessenger.of(context).showSnackBar(
+                      //             const SnackBar(
+                      //               content: Text("تم حفظ الحجز بنجاح!"),
+                      //               backgroundColor: Color.fromARGB(
+                      //                 255,
+                      //                 209,
+                      //                 92,
+                      //                 131,
+                      //               ),
+                      //             ),
+                      //           );
+                      //           final partyIdStr = appointment.id.toString();
+                      //           final notificationBody =
+                      //               "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}";
+
+                      //           await NotificationService()
+                      //               .schedulePartyReminders(
+                      //                 partyId: partyIdStr,
+                      //                 title: "لديك موعد",
+                      //                 body: notificationBody,
+                      //                 date: appointment.date,
+                      //               );
+
+                      //           ref
+                      //               .read(notificationsProvider.notifier)
+                      //               .addNotification(
+                      //                 AppNotification(
+                      //                   id: partyIdStr,
+                      //                   title: "لديك موعد",
+                      //                   body: notificationBody,
+                      //                   date: DateTime.now(),
+                      //                 ),
+                      //               );
+
+                      //           await saveNotificationToHistory(
+                      //             appointment.id.hashCode,
+                      //             "لديك موعد",
+                      //             notificationBody,
+                      //             customId: partyIdStr,
+                      //           );
+
+                      //           form.reset(
+                      //             value: {
+                      //               'phone': PhoneNumber(
+                      //                 nsn: '',
+                      //                 isoCode: IsoCode.SY,
+                      //               ),
+                      //               'city':
+                      //                   ref
+                      //                       .read(currentUserProvider)
+                      //                       .value
+                      //                       ?.city ??
+                      //                   'idleb',
+                      //               'hasMemoriesCorner': false,
+                      //               'hasSafesCorner': false,
+                      //               'hasCoversService': false,
+                      //               'isRural': false,
+                      //             },
+                      //             removeFocus: true,
+                      //           );
+
+                      //           context.go("/reservations");
+                      //         },
+                      //   icon: Icons.app_registration_rounded,
+                      // );
                     },
                   ),
                 ),

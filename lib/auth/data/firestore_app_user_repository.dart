@@ -1,10 +1,11 @@
 // ignore_for_file: avoid_print
 
+import 'package:flutter/material.dart';
 import 'package:princesses/auth/domain/app_user.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'app_user_repository.dart';
-
+import 'package:firebase_messaging/firebase_messaging.dart';
 part 'firestore_app_user_repository.g.dart';
 
 @riverpod
@@ -19,6 +20,21 @@ class FirestoreAppUserRepository implements AppUserRepository {
 
   late FirebaseFirestore _firebase;
   final String collectionName = "appUsers";
+
+  @override
+  Future<void> saveUserFcmToken(String userId) async {
+    try {
+      String? token = await FirebaseMessaging.instance.getToken();
+      if (token != null && userId.isNotEmpty) {
+        await _firebase.collection(collectionName).doc(userId).update({
+          'fcmToken': token,
+        });
+        debugPrint("✅ تم تحديث FCM Token للمستخدم: $userId");
+      }
+    } catch (e) {
+      debugPrint("❌ خطأ أثناء حفظ FCM Token: $e");
+    }
+  }
 
   @override
   Future<AppUser> createUser({required AppUser appUser}) async {

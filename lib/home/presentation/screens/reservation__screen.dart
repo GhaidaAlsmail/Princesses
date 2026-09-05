@@ -84,6 +84,9 @@ class ReservationScreen extends ConsumerWidget {
                   selectedIds.map((id) async {
                     await service.deleteAppointment(id);
                     await NotificationService().cancelPartyReminder(id);
+                    ref
+                        .read(notificationsProvider.notifier)
+                        .removeByPartyId(id);
                   }),
                 );
 

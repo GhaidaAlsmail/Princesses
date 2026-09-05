@@ -39,4 +39,8 @@ class AppUserService {
       BotToast.showText(text: "تم التحديث بنجاح");
     }
   }
+
+  Future<void> saveUserFcmToken(String userId) {
+    return firestoreAppUserRepository.saveUserFcmToken(userId);
+  }
 }

@@ -2,6 +2,7 @@ import 'package:princesses/auth/application/auth_notifier_provider.dart';
 import 'package:princesses/auth/presentation/screens/main_screen.dart';
 import 'package:princesses/auth/presentation/screens/sign_up_screen.dart';
 import 'package:princesses/core/global_navigator.dart';
+import 'package:princesses/core/presentation/screens/edit_profile_page.dart';
 import 'package:princesses/core/presentation/screens/home_page.dart';
 import 'package:princesses/core/screens/splash_screen.dart';
 import 'package:princesses/excel_file/screen/attendes_screen.dart';
@@ -49,6 +50,10 @@ final router = Provider<GoRouter>((ref) {
       GoRoute(
         path: "/reservations",
         builder: (context, state) => const ReservationScreen(),
+      ),
+      GoRoute(
+        path: '/edit-profile',
+        builder: (context, state) => const EditProfilePage(),
       ),
       GoRoute(
         path: '/reservation-details/:appId',

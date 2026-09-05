@@ -63,20 +63,24 @@ class NotificationService {
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
       WidgetsBinding.instance.addPostFrameCallback((_) async {
         final context = globalNavigatorKey.currentContext;
-
+        final rawId = message.data['id']?.toString();
+        final int notifId = rawId != null
+            ? rawId.hashCode
+            : DateTime.now().millisecondsSinceEpoch ~/ 1000;
         final title =
             message.notification?.title ??
             message.data['title'] ??
             "بدون عنوان";
         final body =
             message.notification?.body ?? message.data['body'] ?? "بدون محتوى";
-        final notifId =
-            message.data['id']?.toString() ??
-            DateTime.now().millisecondsSinceEpoch.toString();
+        // final notifId =
+        //     message.data['id']?.toString() ??
+        //     DateTime.now().millisecondsSinceEpoch.toString();
 
         // إظهار إشعار النظام فوراً في البرداية
         await showNotificationImmediately(
-          id: notifId.hashCode,
+          // id: notifId.hashCode,
+          id: notifId,
           title: title,
           body: body,
         );
@@ -84,7 +88,7 @@ class NotificationService {
         if (context != null) {
           final container = ProviderScope.containerOf(context);
           final notification = AppNotification(
-            id: notifId,
+            id: notifId.toString(),
             title: title,
             body: body,
             date: DateTime.now(),
@@ -98,7 +102,7 @@ class NotificationService {
             notification.hashCode,
             title,
             body,
-            customId: notifId,
+            customId: notifId.toString(),
           );
         }
       });
@@ -269,10 +273,26 @@ class NotificationService {
     );
   }
 
+  Future<void> removeNotificationFromHistory(String partyId) async {
+    final prefs = await SharedPreferences.getInstance();
+    final List<String> history =
+        prefs.getStringList('notifications_history') ?? [];
+
+    // تصفية القائمة وحذف الإشعار الذي يحمل نفس الـ id
+    history.removeWhere((item) {
+      final Map<String, dynamic> data = jsonDecode(item);
+      return data['id'] == partyId || data['customId'] == partyId;
+    });
+
+    await prefs.setStringList('notifications_history', history);
+  }
+
   Future<void> cancelPartyReminder(String partyId) async {
     await AndroidAlarmManager.cancel(("day_$partyId").hashCode);
     await AndroidAlarmManager.cancel(("hour_$partyId").hashCode);
     await AndroidAlarmManager.cancel(("party_$partyId").hashCode);
+
+    await removeNotificationFromHistory(partyId);
   }
 
   /// طلب أذونات الإشعارات والمنبهات من الجهاز
@@ -349,7 +369,7 @@ Future<void> alarmCallback(int id) async {
     id: id,
     title: title,
     body: body,
-    notificationDetails: const NotificationDetails(
+    notificationDetails: NotificationDetails(
       android: AndroidNotificationDetails(
         NotificationService.channelId,
         NotificationService.channelName,
@@ -358,6 +378,7 @@ Future<void> alarmCallback(int id) async {
         priority: Priority.max,
         playSound: true,
         enableVibration: true,
+        styleInformation: BigTextStyleInformation(body),
         visibility: NotificationVisibility.public,
       ),
       iOS: DarwinNotificationDetails(
