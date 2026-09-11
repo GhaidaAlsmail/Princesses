@@ -129,6 +129,34 @@ class NotificationService {
     await androidPlugin?.createNotificationChannel(channel);
   }
 
+  // أضف هذه الدالة داخل كلاس NotificationService
+  Future<void> subscribeToUserTopics({
+    required String city,
+    required bool isAdmin,
+  }) async {
+    try {
+      final messaging = FirebaseMessaging.instance;
+
+      // 1. اشتراك الأدمن في موضوع المدراء
+      if (isAdmin) {
+        await messaging.subscribeToTopic('admins');
+      } else {
+        await messaging.unsubscribeFromTopic('admins');
+      }
+
+      // 2. معالجة وتنظيف اسم المدينة لتنسيق مقبول في FCM Topics (بدون مسافات/رموز)
+      if (city.isNotEmpty) {
+        final cleanCity = city.trim().toLowerCase().replaceAll(
+          RegExp(r'[^a-zA-Z0-9_]'),
+          '_',
+        );
+        await messaging.subscribeToTopic('city_$cleanCity');
+      }
+    } catch (e) {
+      print("خطأ أثناء الاشتراك في موضوع FCM: $e");
+    }
+  }
+
   /// إظهار الإشعار المباشر المنبثق مع الصوت والظهور أعلى الشاشة
   Future<void> showNotificationImmediately({
     required int id,

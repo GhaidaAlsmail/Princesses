@@ -9,6 +9,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:princesses/auth/application/auth_notifier_provider.dart';
+import 'package:princesses/home/application/booking_notification_helper.dart';
 import 'package:princesses/home/application/current_user_provider.dart';
 
 class EditProfilePage extends ConsumerStatefulWidget {
@@ -97,15 +98,29 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
         debugPrint("--- تم التحديث في Firestore بنجاح! ---");
 
+        // if (oldCity != null && oldCity.isNotEmpty && oldCity != newCity) {
+        //   await FirebaseMessaging.instance.unsubscribeFromTopic(
+        //     'city_$oldCity',
+        //   );
+        // }
+        // if (newCity != null && newCity.isNotEmpty) {
+        //   await FirebaseMessaging.instance.subscribeToTopic('city_$newCity');
+        // }
         if (oldCity != null && oldCity.isNotEmpty && oldCity != newCity) {
+          final oldCityKey = BookingNotificationHelper.normalizeCityKey(
+            oldCity,
+          );
           await FirebaseMessaging.instance.unsubscribeFromTopic(
-            'city_$oldCity',
+            'city_$oldCityKey',
           );
         }
-        if (newCity != null && newCity.isNotEmpty) {
-          await FirebaseMessaging.instance.subscribeToTopic('city_$newCity');
-        }
 
+        if (newCity != null && newCity.isNotEmpty) {
+          final newCityKey = BookingNotificationHelper.normalizeCityKey(
+            newCity,
+          );
+          await FirebaseMessaging.instance.subscribeToTopic('city_$newCityKey');
+        }
         if (newPassword.isNotEmpty) {
           await currentUser.updatePassword(newPassword);
         }

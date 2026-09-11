@@ -309,6 +309,14 @@ class _AppointmentState extends ConsumerState<Appointment> {
 
                                 try {
                                   await notifier.add(appointment);
+
+                                  // استدعاء الدالة عن طريق اسم الكلاس
+                                  await BookingNotificationHelper.sendNotificationToAllUsers(
+                                    title: "حجز جديد",
+                                    body:
+                                        "تم إضافة حجز جديد باسم ${appointment.name ?? ''}",
+                                    bookingCity: appointment.city ?? 'homs',
+                                  );
                                 } catch (e) {
                                   if (!context.mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -369,36 +377,30 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                 );
 
                                 // التنبيهات المحلية وسجل التطبيق الفردي
-                                final partyIdStr = appointment.id.toString();
+                                // 1. توليد ID رقمي فريد لتجنب تداخل التذكيرات
+                                final int uniqueNotificationId =
+                                    DateTime.now().millisecondsSinceEpoch ~/
+                                    1000;
+
+                                final notificationTitle =
+                                    "حجز جديد: ${appointment.name}";
                                 final notificationBody =
-                                    "موعدك في ${appointment.place} مع ${appointment.name} تاريخ ${appointment.date}";
+                                    "المكان: ${appointment.place} - التاريخ: ${appointment.date.toString().split(' ')[0]}";
 
                                 await NotificationService()
                                     .schedulePartyReminders(
-                                      partyId: partyIdStr,
-                                      title: "لديك موعد",
+                                      partyId: uniqueNotificationId.toString(),
+                                      title: notificationTitle,
                                       body: notificationBody,
                                       date: appointment.date,
                                     );
 
-                                ref
-                                    .read(notificationsProvider.notifier)
-                                    .addNotification(
-                                      AppNotification(
-                                        id: partyIdStr,
-                                        title: "لديك موعد",
-                                        body: notificationBody,
-                                        date: DateTime.now(),
-                                      ),
-                                    );
-
                                 await saveNotificationToHistory(
-                                  appointment.id.hashCode,
-                                  "لديك موعد",
+                                  uniqueNotificationId,
+                                  notificationTitle,
                                   notificationBody,
-                                  customId: partyIdStr,
+                                  customId: appointment.id,
                                 );
-
                                 form.reset(
                                   value: {
                                     'phone': PhoneNumber(

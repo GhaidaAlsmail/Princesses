@@ -118,6 +118,7 @@ flutter:
     - assets/images/
     - assets/svg/
     - assets/json/
+    # - assets/json/service_account.json
   fonts:
     - family: Amiri
       fonts:

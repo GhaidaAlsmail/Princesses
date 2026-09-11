@@ -13,23 +13,7 @@ class AuthNotifier extends StateNotifier<AppUser?> {
   final AuthService authService;
   final AppUserService appUserServices;
 
-  // AuthNotifier(this.authService, this.appUserServices) : super(null) {
-  //   authService.authStateChanges.listen((user) async {
-  //     if (user == null) {
-  //       state = null;
-  //       return;
-  //     }
-
-  //     if (user.providerData.any((p) => p.providerId == "password")) {
-  //       if (!user.emailVerified) {
-  //         state = null;
-  //         return;
-  //       }
-  //     }
-
-  //     state = await appUserServices.getAccountByEmail(user.email ?? "-");
-  //   });
-  // }
+  // داخل constructor الخاص بـ AuthNotifier:
   AuthNotifier(this.authService, this.appUserServices) : super(null) {
     authService.authStateChanges.listen((user) async {
       if (user == null) {
@@ -46,9 +30,9 @@ class AuthNotifier extends StateNotifier<AppUser?> {
 
       state = await appUserServices.getAccountByEmail(user.email ?? "-");
 
-      // 🌟 تحديث الـ Token في حال كان المستخدم مسجلاً لدخوله سابقاً
-      if (state?.id != null && state!.id!.isNotEmpty) {
-        await appUserServices.saveUserFcmToken(state!.id!);
+      // 🌟 تحديث الـ Token والاشتراك في الموضوعات للحسابات القديمة والحالية تلقائياً
+      if (state != null) {
+        await _setupFcmTopics(state!);
       }
     });
   }
@@ -131,6 +115,7 @@ class AuthNotifier extends StateNotifier<AppUser?> {
 
       if (state?.id != null && state!.id!.isNotEmpty) {
         await appUserServices.saveUserFcmToken(state!.id!);
+        await _setupFcmTopics(state!);
       }
 
       await FirebaseMessaging.instance.subscribeToTopic('all_users');
@@ -141,11 +126,49 @@ class AuthNotifier extends StateNotifier<AppUser?> {
       BotToast.showText(text: "خطأ في البريد الإلكتروني أو كلمة المرور");
     }
   }
+  // إضافة الدالة التالية داخل كلاس AuthNotifier:
 
+  Future<void> _setupFcmTopics(AppUser user) async {
+    try {
+      // 1. حفظ / تحديث الـ Token في Firestore
+      if (user.id != null && user.id!.isNotEmpty) {
+        await appUserServices.saveUserFcmToken(user.id!);
+      }
+
+      // 2. الاشتراك في الموضوع العام
+      await FirebaseMessaging.instance.subscribeToTopic('all_users');
+
+      // 3. الاشتراك في topic المدراء إذا كان أدمن
+      if (user.isAdmin) {
+        await FirebaseMessaging.instance.subscribeToTopic('admins');
+      } else {
+        await FirebaseMessaging.instance.unsubscribeFromTopic('admins');
+      }
+
+      // 4. الاشتراك في topic المدينة بحسب المفتاح المنظم
+      if (user.city.isNotEmpty) {
+        final cityKey = user.city.trim().toLowerCase();
+        await FirebaseMessaging.instance.subscribeToTopic('city_$cityKey');
+      }
+    } catch (e) {
+      print("خطأ في إعداد موضوعات الإشعارات: $e");
+    }
+  }
+
+  // Future<void> logOut() async {
+  //   final prefs = SharedPreferencesAsync();
+  //   await prefs.setString("userId", "");
+  //   await authService.signOut();
+  // }
   Future<void> logOut() async {
     final prefs = SharedPreferencesAsync();
+    final String? storedUserId = await prefs.getString("userId");
+
+    // مسح المعرف المحلي
     await prefs.setString("userId", "");
-    await authService.signOut();
+
+    // استدعاء signOut وتمرير الـ userId لإلغاء الاشتراكات
+    await authService.signOut(userId: storedUserId);
   }
 
   Future<void> resetPassword(String email) async {

@@ -1,8 +1,10 @@
 // ignore_for_file: deprecated_member_use, avoid_unnecessary_containers
 
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:gap/gap.dart'; // تحتوي على الـ Gap والـ SliverGap معاً
 import 'package:princesses/auth/application/auth_notifier_provider.dart';
+import 'package:princesses/home/application/booking_notification_helper.dart';
 import 'package:princesses/home/application/current_user_provider.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -174,9 +176,36 @@ class HomePage extends ConsumerWidget {
                   child: Column(
                     children: [
                       InkWell(
-                        onTap: () {
+                        // onTap: () {
+                        //   ref.read(authNotifierProvider.notifier).logOut();
+                        //   context.go("/");
+                        // },
+                        // ✅ تحديث حدث onTap لزر تسجيل الخروج:
+                        onTap: () async {
+                          try {
+                            // إلغاء الاشتراكات عند الخروج
+                            await FirebaseMessaging.instance
+                                .unsubscribeFromTopic('all_users');
+                            await FirebaseMessaging.instance
+                                .unsubscribeFromTopic('admins');
+
+                            if (user?.city != null && user!.city.isNotEmpty) {
+                              final cityKey =
+                                  BookingNotificationHelper.normalizeCityKey(
+                                    user.city,
+                                  );
+                              await FirebaseMessaging.instance
+                                  .unsubscribeFromTopic('city_$cityKey');
+                            }
+                          } catch (e) {
+                            debugPrint(
+                              "خطأ أثناء إلغاء اشتراكات الإشعارات: $e",
+                            );
+                          }
+
+                          // تسجيل الخروج والتوجيه
                           ref.read(authNotifierProvider.notifier).logOut();
-                          context.go("/");
+                          if (context.mounted) context.go("/");
                         },
                         borderRadius: BorderRadius.circular(20),
                         child: Container(

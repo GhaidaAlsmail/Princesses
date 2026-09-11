@@ -1,5 +1,7 @@
 // ignore_for_file: library_private_types_in_public_api, deprecated_member_use, use_build_context_synchronously, avoid_print, prefer_conditional_assignment, invalid_use_of_protected_member, invalid_use_of_visible_for_testing_member
 
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:princesses/auth/application/app_user_service.dart';
 import 'package:princesses/auth/application/auth_notifier_provider.dart';
 import 'package:princesses/auth/application/log_in_form_provider.dart';
@@ -7,6 +9,7 @@ import 'package:princesses/auth/domain/app_user.dart';
 import 'package:princesses/auth/presentation/widgets/reset_passwords.dart';
 import 'package:princesses/core/presentation/widgets/button.dart';
 import 'package:princesses/core/presentation/widgets/my_text_field.dart';
+import 'package:princesses/home/application/booking_notification_helper.dart';
 import 'package:princesses/home/domain/url_functions.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
@@ -27,6 +30,37 @@ class MainScreen extends ConsumerStatefulWidget {
 }
 
 class _MainScreenState extends ConsumerState<MainScreen> {
+  @override
+  void initState() {
+    super.initState();
+    // التأكد من تجديد اشتراكات FCM إذا كان هناك مستخدم مسجل الدخول بالفعل
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user != null) {
+        final userDoc = await FirebaseFirestore.instance
+            .collection('appUsers')
+            .doc(user.uid)
+            .get();
+
+        if (userDoc.exists) {
+          final userData = userDoc.data()!;
+          final city = userData['city'] ?? '';
+          final isAdmin = userData['isAdmin'] ?? false;
+
+          final cleanCity = BookingNotificationHelper.normalizeCityKey(city);
+          if (cleanCity.isNotEmpty) {
+            await FirebaseMessaging.instance.subscribeToTopic(
+              'city_$cleanCity',
+            );
+          }
+          if (isAdmin == true) {
+            await FirebaseMessaging.instance.subscribeToTopic('admins');
+          }
+        }
+      }
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     var form = ref.read(logInFormProvider);
@@ -137,6 +171,44 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
                     const Gap(60),
                     // زر تسجيل الدخول
+                    // ReactiveFormConsumer(
+                    //   builder: (context, formGroup, child) {
+                    //     return MyButton(
+                    //       fillColor: Theme.of(context).colorScheme.primary,
+                    //       text: "تسجيل دخول".i18n,
+                    //       textColor: Theme.of(
+                    //         context,
+                    //       ).colorScheme.primaryContainer,
+                    //       icon: Icons.login,
+                    //       iconColor: Theme.of(
+                    //         context,
+                    //       ).colorScheme.primaryContainer,
+                    //       onpressed: formGroup.invalid
+                    //           ? () {
+                    //               formGroup.markAllAsTouched();
+                    //             }
+                    //           : () {
+                    //               var email = formGroup.control("email").value;
+                    //               var password = formGroup
+                    //                   .control("password")
+                    //                   .value;
+                    //               debugPrint(
+                    //                 "Email: $email, Password: $password",
+                    //               );
+                    //               ref
+                    //                   .read(authNotifierProvider.notifier)
+                    //                   .signInWithEmailAndPassword(
+                    //                     email,
+                    //                     password,
+                    //                   );
+
+                    //               context.go("/home");
+                    //               //formGroup.reset();
+                    //             },
+                    //     );
+                    //   },
+                    // ),
+                    // زر تسجيل الدخول العادي
                     ReactiveFormConsumer(
                       builder: (context, formGroup, child) {
                         return MyButton(
@@ -153,28 +225,78 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                               ? () {
                                   formGroup.markAllAsTouched();
                                 }
-                              : () {
+                              : () async {
                                   var email = formGroup.control("email").value;
                                   var password = formGroup
                                       .control("password")
                                       .value;
-                                  debugPrint(
-                                    "Email: $email, Password: $password",
-                                  );
-                                  ref
+
+                                  // 1. تسجيل الدخول عبر الـ Notifier
+                                  await ref
                                       .read(authNotifierProvider.notifier)
                                       .signInWithEmailAndPassword(
                                         email,
                                         password,
                                       );
 
-                                  context.go("/home");
-                                  //formGroup.reset();
+                                  // 2. جلب بيانات المستخدم الحالية للاشتراك في الإشعارات
+                                  final user =
+                                      FirebaseAuth.instance.currentUser;
+                                  if (user != null) {
+                                    try {
+                                      final userDoc = await FirebaseFirestore
+                                          .instance
+                                          .collection('appUsers')
+                                          .doc(user.uid)
+                                          .get();
+
+                                      if (userDoc.exists) {
+                                        final userData = userDoc.data()!;
+                                        final city = userData['city'] ?? 'homs';
+                                        final isAdmin =
+                                            userData['isAdmin'] ?? false;
+
+                                        // حفظ الـ fcmToken
+                                        final fcmToken = await FirebaseMessaging
+                                            .instance
+                                            .getToken();
+                                        if (fcmToken != null) {
+                                          await FirebaseFirestore.instance
+                                              .collection('appUsers')
+                                              .doc(user.uid)
+                                              .update({'fcmToken': fcmToken});
+                                        }
+
+                                        // الاشتراك في موضوع المدينة و topic الأدمن
+                                        final cleanCity =
+                                            BookingNotificationHelper.normalizeCityKey(
+                                              city,
+                                            );
+                                        if (cleanCity.isNotEmpty) {
+                                          await FirebaseMessaging.instance
+                                              .subscribeToTopic(
+                                                'city_$cleanCity',
+                                              );
+                                        }
+                                        if (isAdmin == true) {
+                                          await FirebaseMessaging.instance
+                                              .subscribeToTopic('admins');
+                                        }
+                                      }
+                                    } catch (e) {
+                                      debugPrint(
+                                        "خطأ في تهيئة إشعارات FCM: $e",
+                                      );
+                                    }
+                                  }
+
+                                  if (context.mounted) {
+                                    context.go("/home");
+                                  }
                                 },
                         );
                       },
                     ),
-
                     const Gap(40),
 
                     Row(
@@ -219,6 +341,98 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                         ),
                         const Gap(10),
 
+                        // Tooltip(
+                        //   message: "تسجيل الدخول عبر Gmail",
+                        //   child: InkWell(
+                        //     onTap: () async {
+                        //       if (!mounted) return;
+
+                        //       try {
+                        //         // إنشاء GoogleSignIn مع اختيار الحساب
+                        //         final googleSignIn = GoogleSignIn(
+                        //           scopes: ['email', 'profile'],
+                        //           signInOption: SignInOption.standard,
+                        //         );
+
+                        //         // إلغاء أي تسجيل دخول سابق لضمان اختيار الحساب
+                        //         await googleSignIn.signOut();
+
+                        //         // اختيار الحساب
+                        //         final googleUser = await googleSignIn.signIn();
+                        //         if (googleUser == null) {
+                        //           if (!mounted) return;
+                        //           ScaffoldMessenger.of(context).showSnackBar(
+                        //             const SnackBar(
+                        //               content: Text(
+                        //                 "تم إلغاء تسجيل الدخول بواسطة المستخدم",
+                        //               ),
+                        //             ),
+                        //           );
+                        //           return;
+                        //         }
+
+                        //         final googleAuth =
+                        //             await googleUser.authentication;
+
+                        //         final credential =
+                        //             GoogleAuthProvider.credential(
+                        //               idToken: googleAuth.idToken,
+                        //               accessToken: googleAuth.accessToken,
+                        //             );
+
+                        //         final userCredential = await FirebaseAuth
+                        //             .instance
+                        //             .signInWithCredential(credential);
+
+                        //         final user = userCredential.user;
+                        //         if (user == null) return;
+
+                        //         if (!mounted) return;
+                        //         final appUserService = ref.read(
+                        //           appUserServiceProvider,
+                        //         );
+
+                        //         var existing = await appUserService
+                        //             .getAccountByEmail(user.email!);
+                        //         if (existing == null) {
+                        //           existing = await appUserService.createAccount(
+                        //             AppUser(
+                        //               id: user.uid,
+                        //               email: user.email!,
+                        //               name: user.displayName ?? "",
+                        //               city: 'homs',
+                        //             ),
+                        //           );
+                        //         }
+
+                        //         // خزّن userId
+                        //         final prefs =
+                        //             await SharedPreferences.getInstance();
+                        //         await prefs.setString("userId", existing.id!);
+
+                        //         // حدّث AuthNotifier
+                        //         ref.read(authNotifierProvider.notifier).state =
+                        //             existing;
+
+                        //         // تنقل مباشرة إلى صفحة الحجوزات
+                        //         if (mounted) context.go("/reservations");
+                        //       } catch (e) {
+                        //         if (!mounted) return;
+                        //         print("Error during Google Sign-In: $e");
+                        //         ScaffoldMessenger.of(context).showSnackBar(
+                        //           const SnackBar(
+                        //             content: Text("حدث خطأ أثناء تسجيل الدخول"),
+                        //           ),
+                        //         );
+                        //       }
+                        //     },
+                        //     child: Image.asset(
+                        //       "assets/images/gmaill.png",
+                        //       height: 38,
+                        //       width: 38,
+                        //     ),
+                        //   ),
+                        // ),
                         Tooltip(
                           message: "تسجيل الدخول عبر Gmail",
                           child: InkWell(
@@ -226,17 +440,14 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                               if (!mounted) return;
 
                               try {
-                                // إنشاء GoogleSignIn مع اختيار الحساب
                                 final googleSignIn = GoogleSignIn(
                                   scopes: ['email', 'profile'],
                                   signInOption: SignInOption.standard,
                                 );
 
-                                // إلغاء أي تسجيل دخول سابق لضمان اختيار الحساب
                                 await googleSignIn.signOut();
-
-                                // اختيار الحساب
                                 final googleUser = await googleSignIn.signIn();
+
                                 if (googleUser == null) {
                                   if (!mounted) return;
                                   ScaffoldMessenger.of(context).showSnackBar(
@@ -251,7 +462,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
 
                                 final googleAuth =
                                     await googleUser.authentication;
-
                                 final credential =
                                     GoogleAuthProvider.credential(
                                       idToken: googleAuth.idToken,
@@ -282,6 +492,33 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                     ),
                                   );
                                 }
+
+                                // --- إضافة الإشعارات عند تسجيل الدخول ---
+                                final fcmToken = await FirebaseMessaging
+                                    .instance
+                                    .getToken();
+                                if (fcmToken != null && existing.id != null) {
+                                  // 1. حفظ fcmToken في Firestore الخاص بالمستخدم
+                                  await FirebaseFirestore.instance
+                                      .collection('appUsers')
+                                      .doc(existing.id)
+                                      .update({'fcmToken': fcmToken});
+                                }
+
+                                // 2. الاشتراك في موضوع المدينة و topic الأدمن إذا كان أدمين
+                                final cleanCity =
+                                    BookingNotificationHelper.normalizeCityKey(
+                                      existing.city ?? '',
+                                    );
+                                if (cleanCity.isNotEmpty) {
+                                  await FirebaseMessaging.instance
+                                      .subscribeToTopic('city_$cleanCity');
+                                }
+                                if (existing.isAdmin == true) {
+                                  await FirebaseMessaging.instance
+                                      .subscribeToTopic('admins');
+                                }
+                                // ----------------------------------------
 
                                 // خزّن userId
                                 final prefs =

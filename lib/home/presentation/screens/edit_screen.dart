@@ -283,11 +283,10 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                               final bool isCreatedByAdmin =
                                   currentUser?.isAdmin ?? false;
 
-                              // إرسال الإشعار لجميع الجهات (المدراء + الموظف المسؤول/صاحب الحجز)
+                              // إرسال الإشعار الفوري push notification عبر FCM
                               await BookingNotificationHelper.notifyAllStakeholders(
                                 currentUserId: currentUser?.id ?? "",
-                                assignedUserId: updatedApp
-                                    .id, // التأكد من التمرير الصحيح لـ User ID
+                                assignedUserId: updatedApp.id,
                                 bookingTitle:
                                     "تم تعديل حجز: ${updatedApp.name}",
                                 bookingDetails:
@@ -296,7 +295,15 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                 city: updatedApp.city,
                               );
 
-                              // ----------------------- سجل الإشعارات داخل التطبيق ---------------------
+                              // حفظ الإشعار في Firestore ليظهر في قائمة التنبيهات داخل التطبيق
+                              await BookingNotificationHelper.sendNotificationToAllUsers(
+                                title: "تم تعديل حجز",
+                                body:
+                                    "تم تعديل موعد ${updatedApp.name} في ${updatedApp.place}",
+                                bookingCity: updatedApp.city,
+                              );
+
+                              // ----------------------- سجل الإشعارات داخل التطبيق (State) ---------------------
                               final notificationsNotifier = ref.read(
                                 notificationsProvider.notifier,
                               );
@@ -306,14 +313,12 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                               final bodyText =
                                   "موعدك في ${updatedApp.place} مع ${updatedApp.name} تاريخ ${updatedApp.date}";
 
-                              // البحث عن الإشعار المرتبط بهذا الحجز تحديداً عبر id الحجز
                               final existingNotificationIndex =
                                   currentNotifications.indexWhere(
                                     (n) => n.id == updatedApp.id.toString(),
                                   );
 
                               if (existingNotificationIndex != -1) {
-                                // تحديث الإشعار المنسوب لهذا الحجز بعينه
                                 await notificationsNotifier
                                     .updateNotificationById(
                                       id: updatedApp.id.toString(),
@@ -321,7 +326,6 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                       newBody: bodyText,
                                     );
                               } else {
-                                // إضافة إشعار جديد مخصص لهذا الحجز برقم الـ id الخاص به
                                 await notificationsNotifier.addNotification(
                                   AppNotification(
                                     id: updatedApp.id.toString(),
@@ -330,53 +334,7 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                     date: DateTime.now(),
                                   ),
                                 );
-                              } // // ----------------------- التنبيهات المحلية ---------------------
-                              // await NotificationService().updatePartyReminder(
-                              //   partyId: updatedApp.id.toString(),
-                              //   title: updatedApp.name,
-                              //   body:
-                              //       "موعدك في ${updatedApp.place} مع ${updatedApp.name}",
-                              //   date: updatedApp.date,
-                              // );
-
-                              // // ----------------------- سجل الإشعارات داخل التطبيق ---------------------
-                              // final notificationsNotifier = ref.read(
-                              //   notificationsProvider.notifier,
-                              // );
-                              // final currentNotifications = ref.read(
-                              //   notificationsProvider,
-                              // );
-                              // final bodyText =
-                              //     "موعدك في ${updatedApp.place} مع ${updatedApp.name} تاريخ ${updatedApp.date}";
-
-                              // // البحث عن الإشعار المرتبط بهذا الحجز تحديداً عبر id الحجز
-                              // final existingNotificationIndex =
-                              //     currentNotifications.indexWhere(
-                              //       (n) => n.id == updatedApp.id.toString(),
-                              //     );
-
-                              // if (existingNotificationIndex != -1) {
-                              //   // تحديث الإشعار المنسوب لهذا الحجز بعينه
-                              //   await notificationsNotifier
-                              //       .updateNotificationById(
-                              //         id: updatedApp.id.toString(),
-                              //         newTitle: "لديك موعد",
-                              //         newBody: bodyText,
-                              //       );
-                              // } else {
-                              //   // إضافة إشعار جديد مخصص لهذا الحجز برقم الـ id الخاص به
-                              //   await notificationsNotifier.addNotification(
-                              //     AppNotification(
-                              //       id: updatedApp.id.toString(),
-                              //       title: "لديك موعد",
-                              //       body: bodyText,
-                              //       date: DateTime.now(),
-                              //     ),
-                              //   );
-                              // }
-
-                              // context.go("/reservations");
-                              // if (!context.mounted) return;
+                              }
                             },
                             icon: Icons.app_registration_rounded,
                           );

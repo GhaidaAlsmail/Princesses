@@ -24,6 +24,10 @@ final themeProvider = FutureProvider<ThemeData>((ref) async {
   final themeJson = jsonDecode(themeStr);
   return buildThemeFromJson(themeJson);
 });
+@pragma('vm:entry-point')
+Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+}
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
