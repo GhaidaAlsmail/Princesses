@@ -1,1 +1,38 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"alamirat-photo","appId":"1:953191066647:android:0730c6d0c4c0bd4584c052","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"alamirat-photo","configurations":{"android":"1:953191066647:android:0730c6d0c4c0bd4584c052","macos":"1:953191066647:ios:3022ef86d9f2865884c052","web":"1:953191066647:web:da6d16f81e9b134584c052","windows":"1:953191066647:web:cdaa9b87fef1643f84c052"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "alamirat-photo",
+          "appId": "1:953191066647:android:0730c6d0c4c0bd4584c052",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "alamirat-photo",
+          "configurations": {
+            "android": "1:953191066647:android:0730c6d0c4c0bd4584c052",
+            "macos": "1:953191066647:ios:3022ef86d9f2865884c052",
+            "web": "1:953191066647:web:da6d16f81e9b134584c052",
+            "windows": "1:953191066647:web:cdaa9b87fef1643f84c052"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "disallowLegacyRuntimeConfig": true,
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ]
+    }
+  ]
+}

@@ -7,7 +7,7 @@ import 'package:princesses/home/application/booking_notification_helper.dart';
 import 'package:princesses/home/application/current_user_provider.dart';
 import 'package:princesses/home/application/notification_provider.dart';
 import 'package:princesses/home/domain/appointment_model.dart';
-import 'package:princesses/home/domain/notifications.dart';
+import 'package:princesses/home/domain/notifications_services.dart';
 import 'package:princesses/home/presentation/widgets/container_card.dart';
 import 'package:princesses/home/presentation/widgets/container_card_date.dart';
 import 'package:princesses/home/presentation/widgets/container_card_mony.dart';
@@ -320,7 +320,6 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                   );
                                   return;
                                 }
-
                                 final currentState = ref.read(
                                   appointmentNotifierProvider,
                                 );
@@ -344,9 +343,10 @@ class _AppointmentState extends ConsumerState<Appointment> {
                                 final bool isCreatedByAdmin =
                                     currentUser?.isAdmin ?? false;
 
-                                // إرسال إشعار الـ FCM للسيرفر
-                                await BookingNotificationHelper.onNewBookingCreated(
-                                  assignedUserId: currentUser?.id ?? "",
+                                // إرسال إشعار الـ FCM عبر HTTP v1 الجديد
+                                await BookingNotificationHelper.notifyAllStakeholders(
+                                  currentUserId: currentUser?.id ?? "",
+
                                   bookingTitle: appointment.name,
                                   bookingDetails:
                                       "المكان: ${appointment.place} - التاريخ: ${appointment.date}",

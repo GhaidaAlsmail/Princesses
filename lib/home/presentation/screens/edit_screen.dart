@@ -7,7 +7,7 @@ import 'package:princesses/home/application/appointment_provider.dart';
 import 'package:princesses/home/application/booking_notification_helper.dart';
 import 'package:princesses/home/application/current_user_provider.dart';
 import 'package:princesses/home/application/notification_provider.dart';
-import 'package:princesses/home/domain/notifications.dart';
+import 'package:princesses/home/domain/notifications_services.dart';
 import 'package:princesses/home/presentation/widgets/container_card.dart';
 import 'package:princesses/home/presentation/widgets/container_card_date.dart';
 import 'package:princesses/home/presentation/widgets/container_card_mony.dart';
@@ -65,7 +65,7 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
           BotToast.closeAllLoading();
           BotToast.showText(text: "تم حفظ التعديلات بنجاح");
           if (context.mounted) {
-            context.go("/reservation-details/${widget.appId}");
+            context.push("/reservation-details/${widget.appId}");
           }
         },
         error: (e, st) {
@@ -266,6 +266,7 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                               );
 
                               await notifier.update(updatedApp);
+
                               // ----------------------- التنبيهات المحلية ---------------------
                               await NotificationService().updatePartyReminder(
                                 partyId: updatedApp.id.toString(),
@@ -282,8 +283,11 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                               final bool isCreatedByAdmin =
                                   currentUser?.isAdmin ?? false;
 
-                              await BookingNotificationHelper.onNewBookingCreated(
-                                assignedUserId: currentUser?.id ?? "",
+                              // إرسال الإشعار لجميع الجهات (المدراء + الموظف المسؤول/صاحب الحجز)
+                              await BookingNotificationHelper.notifyAllStakeholders(
+                                currentUserId: currentUser?.id ?? "",
+                                assignedUserId: updatedApp
+                                    .id, // التأكد من التمرير الصحيح لـ User ID
                                 bookingTitle:
                                     "تم تعديل حجز: ${updatedApp.name}",
                                 bookingDetails:
@@ -326,8 +330,7 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                     date: DateTime.now(),
                                   ),
                                 );
-                              }
-                              // // ----------------------- التنبيهات المحلية ---------------------
+                              } // // ----------------------- التنبيهات المحلية ---------------------
                               // await NotificationService().updatePartyReminder(
                               //   partyId: updatedApp.id.toString(),
                               //   title: updatedApp.name,

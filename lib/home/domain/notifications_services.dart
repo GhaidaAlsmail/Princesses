@@ -1,16 +1,20 @@
 // ignore_for_file: use_build_context_synchronously, avoid_print
 
 import 'dart:convert';
-import 'package:princesses/core/global_navigator.dart';
-import 'package:princesses/home/application/notification_provider.dart';
+import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
-import 'package:android_alarm_manager_plus/android_alarm_manager_plus.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:http/http.dart' as http;
 import 'package:permission_handler/permission_handler.dart';
+import 'package:princesses/core/global_navigator.dart';
+import 'package:princesses/home/application/notification_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:timezone/data/latest_all.dart' as tz;
+import 'package:timezone/data/latest.dart' as tz_data;
+import 'package:timezone/timezone.dart' as tz;
+import 'package:googleapis_auth/auth_io.dart' as auth;
 
 /// Notification Service for party/event reminders
 @pragma('vm:entry-point')
@@ -23,13 +27,14 @@ class NotificationService {
   final FlutterLocalNotificationsPlugin _plugin =
       FlutterLocalNotificationsPlugin();
 
-  static const String channelId =
-      "party_channel_v4"; // قناة جديدة بحجم أولوية أعلى
+  static const String channelId = "party_channel_v4";
   static const String channelName = "Party Reminders";
   static const String _storagePrefix = "alarm_";
 
+  // مفتاح السيرفر الخاص بـ Firebase FCM (يمكنك استبداله بالسيرفر كي الخاص بك)
+
   Future<void> init() async {
-    tz.initializeTimeZones();
+    tz_data.initializeTimeZones();
     await AndroidAlarmManager.initialize();
 
     const androidSettings = AndroidInitializationSettings(
@@ -73,13 +78,9 @@ class NotificationService {
             "بدون عنوان";
         final body =
             message.notification?.body ?? message.data['body'] ?? "بدون محتوى";
-        // final notifId =
-        //     message.data['id']?.toString() ??
-        //     DateTime.now().millisecondsSinceEpoch.toString();
 
-        // إظهار إشعار النظام فوراً في البرداية
+        // إظهار إشعار النظام فوراً بشكل منبثق
         await showNotificationImmediately(
-          // id: notifId.hashCode,
           id: notifId,
           title: title,
           body: body,
@@ -109,12 +110,13 @@ class NotificationService {
     });
   }
 
+  /// إنشاء القناة بخصائص الأهمية القصوى للصوت والانبثاق
   Future<void> _createNotificationChannel() async {
     const AndroidNotificationChannel channel = AndroidNotificationChannel(
       channelId,
       channelName,
       description: 'تنبيهات مواعيد الحجوزات',
-      importance: Importance.max, // إجباري للظهور في البرداية مع تنبيه صوتي
+      importance: Importance.max,
       playSound: true,
       enableVibration: true,
       showBadge: true,
@@ -127,7 +129,7 @@ class NotificationService {
     await androidPlugin?.createNotificationChannel(channel);
   }
 
-  // إظهار الإشعار المباشر
+  /// إظهار الإشعار المباشر المنبثق مع الصوت والظهور أعلى الشاشة
   Future<void> showNotificationImmediately({
     required int id,
     required String title,
@@ -142,10 +144,11 @@ class NotificationService {
           channelId,
           channelName,
           channelDescription: 'تنبيهات مواعيد الحجوزات',
-          importance: Importance.max, // إجباري
-          priority: Priority.max, // إجباري للتنبيه المنبثق والبرداية
+          importance: Importance.max,
+          priority: Priority.max,
           playSound: true,
           enableVibration: true,
+          fullScreenIntent: true,
           visibility: NotificationVisibility.public,
         ),
         iOS: DarwinNotificationDetails(
@@ -155,6 +158,134 @@ class NotificationService {
         ),
       ),
     );
+  }
+
+  /// دالة جدولة الإشعار الدقيق في وقت محدد مسبقاً
+  Future<void> scheduleZonedNotification({
+    required int id,
+    required String title,
+    required String body,
+    required DateTime scheduledDate,
+  }) async {
+    if (scheduledDate.isBefore(DateTime.now())) return;
+
+    final tz.TZDateTime scheduledTZDate = tz.TZDateTime.from(
+      scheduledDate,
+      tz.local,
+    );
+
+    await _plugin.zonedSchedule(
+      id: id,
+      title: title,
+      body: body,
+      scheduledDate: scheduledTZDate,
+      notificationDetails: const NotificationDetails(
+        android: AndroidNotificationDetails(
+          channelId,
+          channelName,
+          channelDescription: 'إشعارات مواعيد الحجز',
+          importance: Importance.max,
+          priority: Priority.high,
+          fullScreenIntent: true,
+          playSound: true,
+          enableVibration: true,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      ),
+      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+    );
+  }
+
+  /// الحصول على Access Token ديناميكي من ملف الـ JSON
+  static Future<String?> _getAccessToken() async {
+    try {
+      // قراءة ملف JSON من الـ assets
+      final jsonString = await rootBundle.loadString(
+        'assets/json/service_account.json',
+      );
+      final jsonMap = jsonDecode(jsonString);
+
+      // تحديد الأذونات الخاصة بـ Firebase Messaging
+      final scopes = ['https://www.googleapis.com/auth/firebase.messaging'];
+
+      final client = await auth.clientViaServiceAccount(
+        auth.ServiceAccountCredentials.fromJson(jsonMap),
+        scopes,
+      );
+
+      final credentials = client.credentials;
+      return credentials.accessToken.data;
+    } catch (e) {
+      print('خطأ في استخراج Access Token: $e');
+      return null;
+    }
+  }
+
+  /// إرسال إشعار FCM باستخدام HTTP v1 API
+  static Future<void> sendFcmNotification({
+    required String
+    target, // يمكن أن يكون Token جهاز أو Topic مثل "/topics/admins"
+    required String title,
+    required String body,
+  }) async {
+    try {
+      final token = await _getAccessToken();
+      if (token == null) {
+        print('تعذر الحصول على Token الإرسال');
+        return;
+      }
+
+      // قراءة Project ID تلقائياً من ملف JSON
+      final jsonString = await rootBundle.loadString(
+        'assets/json/service_account.json',
+      );
+      final jsonMap = jsonDecode(jsonString);
+      final String projectId = jsonMap['project_id'];
+
+      final url = Uri.parse(
+        'https://fcm.googleapis.com/v1/projects/$projectId/messages:send',
+      );
+
+      // تجهيز هيكل البيانات القياسي لـ HTTP v1
+      final Map<String, dynamic> bodyPayload = {
+        'message': {
+          if (target.startsWith('/topics/'))
+            'topic': target.replaceAll('/topics/', '')
+          else
+            'token': target,
+          'notification': {'title': title, 'body': body},
+          'android': {
+            'priority': 'high',
+            'notification': {
+              'channel_id': channelId, // channelId المعرف في الكلاس
+              'sound': 'default',
+            },
+          },
+          'data': {'click_action': 'FLUTTER_NOTIFICATION_CLICK'},
+        },
+      };
+
+      final response = await http.post(
+        url,
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': 'Bearer $token',
+        },
+        body: jsonEncode(bodyPayload),
+      );
+
+      if (response.statusCode == 200) {
+        print('تم إرسال الإشعار بنجاح عبر FCM HTTP v1');
+      } else {
+        print('فشل إرسال الإشعار: ${response.body}');
+      }
+    } catch (e) {
+      print('خطأ أثناء إرسال إشعار FCM: $e');
+    }
   }
 
   // -------------------------------------------------------------------------
@@ -209,7 +340,7 @@ class NotificationService {
       wakeup: true,
       rescheduleOnReboot: true,
       exact: true,
-      alarmClock: true, // يضمن تنفيذ المنبه بدقة متناهية وفي البرداية
+      alarmClock: true,
     );
   }
 
@@ -221,37 +352,34 @@ class NotificationService {
   }) async {
     final now = DateTime.now();
 
-    final dayBefore = date.subtract(const Duration(days: 1));
     final hourBefore = date.subtract(const Duration(hours: 1));
 
-    // قبل يوم
-    if (dayBefore.isAfter(now)) {
-      await scheduleExactAlarm(
-        id: ("day_$partyId").hashCode,
-        time: dayBefore,
-        title: "$title (قبل يوم)",
-        body: body,
-        partyId: partyId,
+    // تنبيه قبل ساعة باستخدام zonedSchedule
+    if (hourBefore.isAfter(now)) {
+      await scheduleZonedNotification(
+        id: ("hour_$partyId").hashCode,
+        title: "تذكير بالحجز",
+        body: "لديك موعد حجز بعد ساعة",
+        scheduledDate: hourBefore,
       );
     }
 
-    // قبل ساعة
+    // تنبيه الموعد الرئيسي
+    if (date.isAfter(now)) {
+      await scheduleZonedNotification(
+        id: ("party_$partyId").hashCode,
+        title: title,
+        body: body,
+        scheduledDate: date,
+      );
+    }
+
+    // جدولة AlarmManager لضمان الاستيقاظ في الخلفية
     if (hourBefore.isAfter(now)) {
       await scheduleExactAlarm(
         id: ("hour_$partyId").hashCode,
         time: hourBefore,
         title: "$title (قبل ساعة)",
-        body: body,
-        partyId: partyId,
-      );
-    }
-
-    // الإشعار الرئيسي في الموعد
-    if (date.isAfter(now)) {
-      await scheduleExactAlarm(
-        id: ("party_$partyId").hashCode,
-        time: date,
-        title: title,
         body: body,
         partyId: partyId,
       );
@@ -278,7 +406,6 @@ class NotificationService {
     final List<String> history =
         prefs.getStringList('notifications_history') ?? [];
 
-    // تصفية القائمة وحذف الإشعار الذي يحمل نفس الـ id
     history.removeWhere((item) {
       final Map<String, dynamic> data = jsonDecode(item);
       return data['id'] == partyId || data['customId'] == partyId;
@@ -297,17 +424,14 @@ class NotificationService {
 
   /// طلب أذونات الإشعارات والمنبهات من الجهاز
   Future<void> requestLocalPermissions() async {
-    // 1. طلب إذن الإشعارات العام (Android 13+)
     if (await Permission.notification.isDenied) {
       await Permission.notification.request();
     }
 
-    // 2. طلب إذن المنبهات الدقيقة (Schedule Exact Alarm)
     if (await Permission.scheduleExactAlarm.isDenied) {
       await Permission.scheduleExactAlarm.request();
     }
 
-    // 3. طلب الأذونات عبر Flutter Local Notifications Plugin
     final androidPlugin = _plugin
         .resolvePlatformSpecificImplementation<
           AndroidFlutterLocalNotificationsPlugin
@@ -344,7 +468,6 @@ Future<void> alarmCallback(int id) async {
   );
   await plugin.initialize(settings: settings);
 
-  // إعداد القناة لضمان الإنشاء إذا انطلقت العملية والخلفية مغلقة تماماً
   const AndroidNotificationChannel channel = AndroidNotificationChannel(
     NotificationService.channelId,
     NotificationService.channelName,
@@ -374,14 +497,14 @@ Future<void> alarmCallback(int id) async {
         NotificationService.channelId,
         NotificationService.channelName,
         channelDescription: 'تنبيهات مواعيد الحجوزات',
-        importance: Importance.max, // أقصى أولوية لظهور البرداية
+        importance: Importance.max,
         priority: Priority.max,
         playSound: true,
         enableVibration: true,
         styleInformation: BigTextStyleInformation(body),
         visibility: NotificationVisibility.public,
       ),
-      iOS: DarwinNotificationDetails(
+      iOS: const DarwinNotificationDetails(
         presentAlert: true,
         presentBadge: true,
         presentSound: true,
