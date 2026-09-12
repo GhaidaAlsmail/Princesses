@@ -7,7 +7,6 @@ import 'package:i18n_extension/default.i18n.dart';
 import 'package:intl/intl.dart';
 import 'package:princesses/home/presentation/screens/legacy_appiontment_screen.dart';
 import 'package:reactive_phone_form_field/reactive_phone_form_field.dart';
-
 import 'package:princesses/home/application/appointment_provider.dart';
 import 'package:princesses/home/application/appoitment_service.dart';
 import 'package:princesses/home/application/check_box_provider.dart';
@@ -26,7 +25,7 @@ class ReservationScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     var form = ref.read(appointmentProvider);
     final citiesAsync = ref.watch(citiesStreamProvider);
-    final checkBoxState = ref.watch(checkBoxProvider);
+    ref.watch(checkBoxProvider);
     final unread = ref
         .watch(notificationsProvider)
         .where((n) => !n.read)

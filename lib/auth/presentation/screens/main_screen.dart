@@ -379,7 +379,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                                 // 2. الاشتراك في موضوع المدينة و topic الأدمن إذا كان أدمين
                                 final cleanCity =
                                     BookingNotificationHelper.normalizeCityKey(
-                                      existing.city ?? '',
+                                      existing.city,
                                     );
                                 if (cleanCity.isNotEmpty) {
                                   await FirebaseMessaging.instance

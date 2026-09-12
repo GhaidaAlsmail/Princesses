@@ -1,4 +1,4 @@
-// ignore_for_file: use_build_context_synchronously
+// ignore_for_file: deprecated_member_use, unnecessary_null_comparison, use_build_context_synchronously
 
 import 'package:bot_toast/bot_toast.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -48,7 +48,7 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
     final userState = ref.read(currentUserProvider).value;
     if (userState != null) {
-      _nameController.text = userState.name ?? '';
+      _nameController.text = userState.name;
 
       final userCity = userState.city;
       if (userCity != null && userCity.isNotEmpty) {
@@ -98,14 +98,6 @@ class _EditProfilePageState extends ConsumerState<EditProfilePage> {
 
         debugPrint("--- تم التحديث في Firestore بنجاح! ---");
 
-        // if (oldCity != null && oldCity.isNotEmpty && oldCity != newCity) {
-        //   await FirebaseMessaging.instance.unsubscribeFromTopic(
-        //     'city_$oldCity',
-        //   );
-        // }
-        // if (newCity != null && newCity.isNotEmpty) {
-        //   await FirebaseMessaging.instance.subscribeToTopic('city_$newCity');
-        // }
         if (oldCity != null && oldCity.isNotEmpty && oldCity != newCity) {
           final oldCityKey = BookingNotificationHelper.normalizeCityKey(
             oldCity,
