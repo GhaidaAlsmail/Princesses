@@ -7,4 +7,5 @@ abstract class AppoitmentRepository {
   Future<void> deleteAppoitment({required String id});
   Stream<List<AppointmentModel>> streamAppointments();
   Stream<List<AppointmentModel>> streamAppointmentsByCity(String city);
+  Future<List<AppointmentModel>> getAppointments();
 }

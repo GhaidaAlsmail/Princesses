@@ -37,9 +37,7 @@ final appointmentProvider = Provider<FormGroup>((ref) {
     ),
 
     //  البريد الإلكتروني
-    'email': FormControl<String>(
-      validators: [Validators.required, Validators.email],
-    ),
+    'email': FormControl<String>(validators: [Validators.email]),
 
     //  المبلغ المدفوع
     'paid': FormControl<String>(
@@ -129,3 +127,10 @@ class AppointmentNotifier extends StateNotifier<AsyncValue<void>> {
     }
   }
 }
+
+final getAppointmentsFutureProvider = FutureProvider<List<AppointmentModel>>((
+  ref,
+) async {
+  final appService = ref.watch(appoitmentServiceProvider);
+  return appService.getAppointments();
+});

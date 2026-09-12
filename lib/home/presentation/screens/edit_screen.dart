@@ -1,6 +1,12 @@
 // ignore_for_file: depend_on_referenced_packages, use_build_context_synchronously, unnecessary_null_comparison, deprecated_member_use
 
 import 'dart:async';
+import 'package:bot_toast/bot_toast.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:i18n_extension/default.i18n.dart';
+import 'package:phone_numbers_parser/phone_numbers_parser.dart';
 import 'package:princesses/core/presentation/widgets/button.dart';
 import 'package:princesses/home/application/app_provider.dart';
 import 'package:princesses/home/application/appointment_provider.dart';
@@ -12,13 +18,7 @@ import 'package:princesses/home/presentation/widgets/container_card.dart';
 import 'package:princesses/home/presentation/widgets/container_card_date.dart';
 import 'package:princesses/home/presentation/widgets/container_card_mony.dart';
 import 'package:princesses/home/presentation/widgets/heart_row.dart';
-import 'package:princesses/home/presentation/widgets/transportation_fare_function.dart'; // دالة الحسابات الذكية
-import 'package:bot_toast/bot_toast.dart';
-import 'package:flutter/material.dart';
-import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:go_router/go_router.dart';
-import 'package:i18n_extension/default.i18n.dart';
-import 'package:phone_numbers_parser/phone_numbers_parser.dart';
+import 'package:princesses/home/presentation/widgets/transportation_fare_function.dart';
 import 'package:reactive_forms/reactive_forms.dart';
 
 class EditAppScreen extends ConsumerStatefulWidget {
@@ -65,7 +65,7 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
           BotToast.closeAllLoading();
           BotToast.showText(text: "تم حفظ التعديلات بنجاح");
           if (context.mounted) {
-            context.push("/reservation-details/${widget.appId}");
+            context.push("/reservations");
           }
         },
         error: (e, st) {
@@ -76,7 +76,6 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
     });
 
     return Container(
-      // نضع الخلفية المتدرجة هنا لتشمل كامل الشاشة بما فيها الـ AppBar
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topCenter,
@@ -89,7 +88,6 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
         ),
       ),
       child: Scaffold(
-        // جعل خلفية السكافولد شفافة لتظهر الخلفية المتدرجة من تحته
         backgroundColor: Colors.transparent,
         appBar: AppBar(
           backgroundColor: Colors.transparent,
@@ -100,7 +98,7 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
               if (context.canPop()) {
                 context.pop();
               } else {
-                context.push("/reservations");
+                context.go("/reservation-details/${widget.appId}");
               }
             },
             icon: Icon(
@@ -128,11 +126,10 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
               return const Center(child: Text("Appointment not found!"));
             }
 
-            /// ملء الحقول بالبيانات المتاحة داخل الـ Model
             if (!form.control("name").touched) {
               PhoneNumber? parsedPhone;
               try {
-                parsedPhone = app.phone != null && app.phone.isNotEmpty
+                parsedPhone = app.phone.isNotEmpty
                     ? PhoneNumber.parse(app.phone)
                     : null;
               } catch (_) {}
@@ -267,14 +264,18 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
 
                               await notifier.update(updatedApp);
 
-                              // ----------------------- التنبيهات المحلية ---------------------
-                              await NotificationService().updatePartyReminder(
-                                partyId: updatedApp.id.toString(),
-                                title: updatedApp.name,
-                                body:
-                                    "موعدك في ${updatedApp.place} مع ${updatedApp.name}",
-                                date: updatedApp.date,
+                              // ----------------------- التنبيهات المحلية المجدولة ---------------------
+                              // إلغاء التنبيهات القديمة وإعادة الجدولة وفق التاريخ الجديد
+                              await NotificationService().cancelPartyReminder(
+                                updatedApp.id.toString(),
                               );
+                              await NotificationService()
+                                  .scheduleAppointmentReminders(
+                                    partyId: updatedApp.id.toString(),
+                                    title: updatedApp.name,
+                                    place: updatedApp.place,
+                                    appointmentDate: updatedApp.date,
+                                  );
 
                               // ----------------------- إشعارات شبكة Firebase (FCM) ---------------------
                               final currentUser = ref
@@ -283,10 +284,13 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                               final bool isCreatedByAdmin =
                                   currentUser?.isAdmin ?? false;
 
-                              // إرسال الإشعار الفوري push notification عبر FCM
                               await BookingNotificationHelper.notifyAllStakeholders(
                                 currentUserId: currentUser?.id ?? "",
                                 assignedUserId: updatedApp.id,
+                                partyId: updatedApp.id.toString(),
+                                appointmentDate: updatedApp.date,
+                                place: updatedApp.place,
+
                                 bookingTitle:
                                     "تم تعديل حجز: ${updatedApp.name}",
                                 bookingDetails:
@@ -295,14 +299,15 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                 city: updatedApp.city,
                               );
 
-                              // حفظ الإشعار في Firestore ليظهر في قائمة التنبيهات داخل التطبيق
+                              // حفظ الإشعار في Firestore مع تمرير تاريخ الموعد المعدّل
                               await BookingNotificationHelper.sendNotificationToAllUsers(
                                 title: "تم تعديل حجز",
                                 body:
                                     "تم تعديل موعد ${updatedApp.name} في ${updatedApp.place}",
                                 bookingCity: updatedApp.city,
+                                appointmentDate: updatedApp.date,
                               );
-
+                              if (!mounted) return;
                               // ----------------------- سجل الإشعارات داخل التطبيق (State) ---------------------
                               final notificationsNotifier = ref.read(
                                 notificationsProvider.notifier,
@@ -325,6 +330,7 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                       newTitle: "لديك موعد",
                                       newBody: bodyText,
                                     );
+                                if (!mounted) return;
                               } else {
                                 await notificationsNotifier.addNotification(
                                   AppNotification(
@@ -334,6 +340,7 @@ class _EditAppScreenState extends ConsumerState<EditAppScreen> {
                                     date: DateTime.now(),
                                   ),
                                 );
+                                if (!mounted) return;
                               }
                             },
                             icon: Icons.app_registration_rounded,

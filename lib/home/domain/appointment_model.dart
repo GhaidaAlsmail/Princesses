@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:princesses/home/domain/times_tamp_converter.dart';
 
 class AppointmentModel {
@@ -109,7 +110,16 @@ class AppointmentModel {
     };
   }
 
-  // 4. دالة copyWith لتعديل حقول معينة
+  // 4. دالة التحويل المباشر من DocumentSnapshot (Firestore)
+  factory AppointmentModel.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    return AppointmentModel.fromJson({
+      ...data,
+      'id': doc.id, // دمج معرف المستند تلقائياً
+    });
+  }
+
+  // 5. دالة copyWith لتعديل حقول معينة
   AppointmentModel copyWith({
     String? id,
     String? name,

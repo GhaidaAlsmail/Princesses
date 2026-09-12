@@ -1,20 +1,23 @@
 // ignore_for_file: use_build_context_synchronously, deprecated_member_use, prefer_interpolation_to_compose_strings, depend_on_referenced_packages
 
-import 'package:princesses/home/application/appointment_provider.dart';
-import 'package:princesses/home/application/appoitment_service.dart';
-import 'package:princesses/home/application/check_box_provider.dart';
-import 'package:princesses/home/application/current_user_provider.dart';
-import 'package:princesses/home/application/notification_provider.dart';
-import 'package:princesses/home/domain/appointment_model.dart';
-import 'package:princesses/home/presentation/screens/details_screen.dart';
-import 'package:princesses/home/domain/notifications_services.dart';
-import 'package:princesses/home/presentation/widgets/transportation_fare_function.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:i18n_extension/default.i18n.dart';
 import 'package:intl/intl.dart';
+import 'package:princesses/home/presentation/screens/legacy_appiontment_screen.dart';
 import 'package:reactive_phone_form_field/reactive_phone_form_field.dart';
+
+import 'package:princesses/home/application/appointment_provider.dart';
+import 'package:princesses/home/application/appoitment_service.dart';
+import 'package:princesses/home/application/check_box_provider.dart';
+import 'package:princesses/home/application/current_user_provider.dart';
+import 'package:princesses/home/application/notification_provider.dart';
+import 'package:princesses/home/data/firestore_appointment_repository.dart';
+import 'package:princesses/home/domain/appointment_model.dart';
+import 'package:princesses/home/domain/notifications_services.dart';
+import 'package:princesses/home/presentation/screens/details_screen.dart';
+import 'package:princesses/home/presentation/widgets/transportation_fare_function.dart';
 
 class ReservationScreen extends ConsumerWidget {
   const ReservationScreen({super.key});
@@ -22,15 +25,17 @@ class ReservationScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     var form = ref.read(appointmentProvider);
-    final myRes = ref.watch(reservationsProvider);
+    final citiesAsync = ref.watch(citiesStreamProvider);
     final checkBoxState = ref.watch(checkBoxProvider);
     final unread = ref
         .watch(notificationsProvider)
         .where((n) => !n.read)
         .length;
+
     form.valueChanges.listen((_) {
       calculateAppointmentPricing(form);
     });
+
     return Scaffold(
       appBar: AppBar(
         leading: IconButton(
@@ -42,10 +47,10 @@ class ReservationScreen extends ConsumerWidget {
         ),
         title: Center(
           child: Text(
-            "الحجوزات",
+            "مجلدات المحافظات",
             style: TextStyle(
               color: Theme.of(context).colorScheme.primary.withAlpha(150),
-              fontSize: 40,
+              fontSize: 32,
               fontFamily: 'Amiri',
               fontWeight: FontWeight.bold,
             ),
@@ -53,79 +58,7 @@ class ReservationScreen extends ConsumerWidget {
         ),
         actions: [
           IconButton(
-            icon: Icon(
-              Icons.delete,
-              color: Theme.of(context).colorScheme.primary.withAlpha(150),
-            ),
-            onPressed: () async {
-              final selectedIds = checkBoxState.entries
-                  .where((entry) => entry.value == true)
-                  .map((entry) => entry.key)
-                  .toList();
-
-              if (selectedIds.isEmpty) {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text("الرجاء تحديد حجز للحذف!".i18n)),
-                );
-                return;
-              }
-
-              ScaffoldMessenger.of(context).showSnackBar(
-                SnackBar(
-                  content: Text("جاري حذف الحجوزات المحددة...".i18n),
-                  duration: const Duration(seconds: 1),
-                ),
-              );
-
-              try {
-                final service = ref.read(appoitmentServiceProvider);
-
-                await Future.wait(
-                  selectedIds.map((id) async {
-                    await service.deleteAppointment(id);
-                    await NotificationService().cancelPartyReminder(id);
-                    ref
-                        .read(notificationsProvider.notifier)
-                        .removeByPartyId(id);
-                  }),
-                );
-
-                if (!context.mounted) return;
-
-                ref.read(checkBoxProvider.notifier).state = {};
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text("تم حذف الحجوزات المحددة بنجاح".i18n),
-                    backgroundColor: Colors.green,
-                  ),
-                );
-              } catch (e) {
-                debugPrint("خطأ الحذف التفصيلي: $e");
-
-                if (!context.mounted) return;
-
-                String errorMessage = "حدث خطأ أثناء الحذف: $e".i18n;
-                if (e.toString().contains("UnknownHostException") ||
-                    e.toString().contains("UNAVAILABLE")) {
-                  errorMessage =
-                      "تعذر الاتصال بالسيرفر. يرجى التحقق من اتصال الإنترنت في المحاكي."
-                          .i18n;
-                }
-
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(
-                    content: Text(errorMessage),
-                    backgroundColor: Colors.red,
-                  ),
-                );
-              }
-            },
-          ),
-          IconButton(
-            onPressed: () {
-              context.push("/notifications");
-            },
+            onPressed: () => context.push("/notifications"),
             icon: Stack(
               children: [
                 Icon(
@@ -158,14 +91,14 @@ class ReservationScreen extends ConsumerWidget {
           ),
         ],
       ),
-      body: myRes.when(
+      body: citiesAsync.when(
         loading: () => const Center(child: CircularProgressIndicator()),
-        error: (error, stackTrace) => Center(child: Text("Error: $error")),
-        data: (apps) {
-          if (apps.isEmpty) {
+        error: (error, stack) => Center(child: Text("خطأ: $error")),
+        data: (cities) {
+          if (cities.isEmpty) {
             return Center(
               child: Text(
-                "لا يوجد حجوزات".i18n,
+                "لا توجد مجلدات محافظات".i18n,
                 style: TextStyle(
                   fontSize: 20,
                   fontFamily: "Amiri",
@@ -179,112 +112,103 @@ class ReservationScreen extends ConsumerWidget {
           return RefreshIndicator(
             onRefresh: () async {
               ref.invalidate(currentUserProvider);
-              ref.invalidate(reservationsProvider);
+              ref.invalidate(citiesStreamProvider);
               await Future.delayed(const Duration(milliseconds: 500));
             },
-            child: ListView.builder(
-              itemCount: apps.length,
+            child: GridView.builder(
+              padding: const EdgeInsets.all(16),
+              gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                crossAxisCount: 2,
+                crossAxisSpacing: 16,
+                mainAxisSpacing: 16,
+                childAspectRatio: 1.1,
+              ),
+              itemCount: cities.length + 1,
               itemBuilder: (context, index) {
-                AppointmentModel app = apps[index];
-
-                final onlyNumber = app.phone.toString().replaceAll(
-                  RegExp(r'[^0-9+]'),
-                  '',
-                );
-                final isSelected = checkBoxState[app.id] ?? false;
-                final place = app.place;
-                final formattedDate = DateFormat('yyyy-MM-dd').format(app.date);
-                final formattedTime = DateFormat('hh:mm a').format(app.date);
-                return Padding(
-                  padding: const EdgeInsets.all(15.0),
-                  child: Container(
-                    decoration: BoxDecoration(
-                      color: Colors.pink.withAlpha(80),
-                      borderRadius: BorderRadius.circular(15),
-                    ),
-                    padding: const EdgeInsets.only(top: 6),
-                    child: ListTile(
-                      titleAlignment: ListTileTitleAlignment.top,
-                      contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 15,
-                        vertical: 10,
-                      ),
-                      title: Text(
-                        app.name,
-                        style: const TextStyle(
-                          fontSize: 25,
-                          color: Colors.white,
-                          fontWeight: FontWeight.bold,
+                // 🌟 1. مجلد الحجوزات القديمة (غير المصنفة)
+                if (index == 0) {
+                  return InkWell(
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => const LegacyAppointmentsListScreen(),
+                        ),
+                      );
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        color: Colors.deepPurple.withAlpha(40),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.deepPurple.withAlpha(100),
+                          width: 1.5,
                         ),
                       ),
-                      leading: Checkbox(
-                        value: isSelected,
-                        onChanged: (value) {
-                          ref.read(checkBoxProvider.notifier).state = {
-                            ...ref.read(checkBoxProvider.notifier).state,
-                            app.id: value ?? false,
-                          };
-                        },
-                      ),
-                      trailing: Padding(
-                        padding: const EdgeInsets.only(bottom: 10.0),
-                        child: Text(
-                          app.city,
-                          style: const TextStyle(
-                            fontSize: 15,
-                            color: Colors.white,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      subtitle: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
                         children: [
+                          Icon(
+                            Icons.folder_shared_rounded,
+                            size: 60,
+                            color: Theme.of(context).colorScheme.primary,
+                          ),
+                          const SizedBox(height: 10),
                           Text(
-                            "الهاتف: $onlyNumber",
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Colors.white,
+                            "الحجوزات السابقة",
+                            style: TextStyle(
+                              fontSize: 20,
+                              fontFamily: "Amiri",
                               fontWeight: FontWeight.bold,
+                              color: Theme.of(context).colorScheme.primary,
                             ),
                           ),
-                          Text(
-                            "التاريخ: $formattedDate",
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            "الوقت: $formattedTime",
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          Text(
-                            "الصالة: $place",
-                            style: const TextStyle(
-                              fontSize: 15,
-                              color: Colors.white,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          const SizedBox(height: 2),
                         ],
                       ),
-                      onTap: () {
-                        // 🌟 التعديل هنا: يفتح صفحة التفاصيل أولاً ويمرر معها الـ ID
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                DetailsAppScreen(appId: app.id),
+                    ),
+                  );
+                }
+
+                // 🌟 2. مجلدات المحافظات الفرعية
+                final city = cities[index - 1];
+                return InkWell(
+                  onTap: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) =>
+                            CityAppointmentsListScreen(cityName: city),
+                      ),
+                    );
+                  },
+                  child: Container(
+                    decoration: BoxDecoration(
+                      color: Colors.pink.withAlpha(40),
+                      borderRadius: BorderRadius.circular(20),
+                      border: Border.all(
+                        color: Colors.pink.withAlpha(100),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.folder_special_rounded,
+                          size: 60,
+                          color: Theme.of(context).colorScheme.primary,
+                        ),
+                        const SizedBox(height: 10),
+                        Text(
+                          city.toUpperCase(),
+                          style: TextStyle(
+                            fontSize: 20,
+                            fontFamily: "Amiri",
+                            fontWeight: FontWeight.bold,
+                            color: Theme.of(context).colorScheme.primary,
                           ),
-                        );
-                      },
+                        ),
+                      ],
                     ),
                   ),
                 );
@@ -304,6 +228,166 @@ class ReservationScreen extends ConsumerWidget {
           context.go("/appointment");
         },
         child: Icon(Icons.add, color: Theme.of(context).colorScheme.primary),
+      ),
+    );
+  }
+}
+
+// 🌟 شاشة عرض الحجوزات الخاصة بمحافظة مخصصة
+class CityAppointmentsListScreen extends ConsumerWidget {
+  final String cityName;
+
+  const CityAppointmentsListScreen({super.key, required this.cityName});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final appointmentsAsync = ref.watch(cityAppointmentsProvider(cityName));
+    final checkBoxState = ref.watch(checkBoxProvider);
+
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(
+          "حجوزات $cityName",
+          style: const TextStyle(fontFamily: 'Amiri', fontSize: 26),
+        ),
+        actions: [
+          IconButton(
+            icon: Icon(
+              Icons.delete,
+              color: Theme.of(context).colorScheme.primary.withAlpha(150),
+            ),
+            onPressed: () async {
+              final selectedIds = checkBoxState.entries
+                  .where((entry) => entry.value == true)
+                  .map((entry) => entry.key)
+                  .toList();
+
+              if (selectedIds.isEmpty) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(content: Text("الرجاء تحديد حجز للحذف!".i18n)),
+                );
+                return;
+              }
+
+              try {
+                final service = ref.read(appoitmentServiceProvider);
+                await Future.wait(
+                  selectedIds.map((id) async {
+                    await service.deleteAppointment(id);
+                    await NotificationService().cancelPartyReminder(id);
+                    ref
+                        .read(notificationsProvider.notifier)
+                        .removeByPartyId(id);
+                  }),
+                );
+
+                if (!context.mounted) return;
+                ref.read(checkBoxProvider.notifier).state = {};
+
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("تم حذف الحجوزات المحددة بنجاح".i18n),
+                    backgroundColor: Colors.green,
+                  ),
+                );
+              } catch (e) {
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text("حدث خطأ أثناء الحذف: $e".i18n),
+                    backgroundColor: Colors.red,
+                  ),
+                );
+              }
+            },
+          ),
+        ],
+      ),
+      body: appointmentsAsync.when(
+        loading: () => const Center(child: CircularProgressIndicator()),
+        error: (err, stack) => Center(child: Text("خطأ: $err")),
+        data: (apps) {
+          if (apps.isEmpty) {
+            return const Center(
+              child: Text(
+                "لا توجد حجوزات في هذه المحافظة",
+                style: TextStyle(fontSize: 18, fontFamily: "Amiri"),
+              ),
+            );
+          }
+
+          return ListView.builder(
+            itemCount: apps.length,
+            itemBuilder: (context, index) {
+              AppointmentModel app = apps[index];
+              final onlyNumber = app.phone.toString().replaceAll(
+                RegExp(r'[^0-9+]'),
+                '',
+              );
+              final isSelected = checkBoxState[app.id] ?? false;
+              final formattedDate = DateFormat('yyyy-MM-dd').format(app.date);
+              final formattedTime = DateFormat('hh:mm a').format(app.date);
+
+              return Padding(
+                padding: const EdgeInsets.all(12.0),
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: Colors.pink.withAlpha(80),
+                    borderRadius: BorderRadius.circular(15),
+                  ),
+                  child: ListTile(
+                    title: Text(
+                      app.name,
+                      style: const TextStyle(
+                        fontSize: 22,
+                        color: Colors.white,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    leading: Checkbox(
+                      value: isSelected,
+                      onChanged: (value) {
+                        ref.read(checkBoxProvider.notifier).state = {
+                          ...ref.read(checkBoxProvider.notifier).state,
+                          app.id: value ?? false,
+                        };
+                      },
+                    ),
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "الهاتف: $onlyNumber",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        Text(
+                          "التاريخ: $formattedDate",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        Text(
+                          "الوقت: $formattedTime",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                        Text(
+                          "الصالة: ${app.place}",
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ],
+                    ),
+                    onTap: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => DetailsAppScreen(appId: app.id),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              );
+            },
+          );
+        },
       ),
     );
   }

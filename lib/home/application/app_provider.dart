@@ -1,3 +1,4 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:princesses/home/application/appoitment_service.dart';
 import 'package:princesses/home/data/firestore_appointment_repository.dart';
 import 'package:princesses/home/domain/appointment_model.dart';
@@ -44,3 +45,15 @@ final allReservationsStreamProvider = StreamProvider<List<AppointmentModel>>((
   final repo = ref.watch(firestoreAppoitmentRepositoryProvider);
   return repo.streamAppointments();
 });
+// 🌟 جلب الحجوزات المخزنة مباشرة في الـ Collection الرئيسية القديمة (appointments)
+final legacyAppointmentsProvider =
+    StreamProvider.autoDispose<List<AppointmentModel>>((ref) {
+      return FirebaseFirestore.instance
+          .collection('appointments')
+          .snapshots()
+          .map(
+            (snapshot) => snapshot.docs
+                .map((doc) => AppointmentModel.fromFirestore(doc))
+                .toList(),
+          );
+    });

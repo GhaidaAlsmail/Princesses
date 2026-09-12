@@ -98,7 +98,7 @@ class _ContainerCardDateState extends State<ContainerCardDate> {
                 child: Text('حمص', style: TextStyle(fontFamily: "Amiri")),
               ),
               DropdownMenuItem(
-                value: 'Damascus',
+                value: 'damascus',
                 child: Text('دمشق', style: TextStyle(fontFamily: "Amiri")),
               ),
             ],

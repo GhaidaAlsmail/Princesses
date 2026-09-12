@@ -20,11 +20,11 @@ class AppoitmentService {
     return firestoreAppoitmentRepository.addAppointment(app: app);
   }
 
-  /// جلب جميع الحجوزات (أو أول حجز كما في المستودع)
-  //   Future<List<AppointmentModel>> getAppointments() {
-  //     // return firestoreAppoitmentRepository.getAppointments();
-  //     return firestoreAppoitmentRepository.getAppointments();
-  //   }
+  //  جلب جميع الحجوزات (أو أول حجز كما في المستودع)
+  /// جلب جميع الحجوزات لمرة واحدة
+  Future<List<AppointmentModel>> getAppointments() async {
+    return firestoreAppoitmentRepository.getAppointments();
+  }
   //  FutureOr<List<AppointmentModel>> getAppointmentsByCity(String city) {
   //     return firestoreAppoitmentRepository.getAppointmentsByCity(city);
   //   }

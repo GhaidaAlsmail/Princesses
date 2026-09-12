@@ -170,44 +170,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                     ),
 
                     const Gap(60),
-                    // زر تسجيل الدخول
-                    // ReactiveFormConsumer(
-                    //   builder: (context, formGroup, child) {
-                    //     return MyButton(
-                    //       fillColor: Theme.of(context).colorScheme.primary,
-                    //       text: "تسجيل دخول".i18n,
-                    //       textColor: Theme.of(
-                    //         context,
-                    //       ).colorScheme.primaryContainer,
-                    //       icon: Icons.login,
-                    //       iconColor: Theme.of(
-                    //         context,
-                    //       ).colorScheme.primaryContainer,
-                    //       onpressed: formGroup.invalid
-                    //           ? () {
-                    //               formGroup.markAllAsTouched();
-                    //             }
-                    //           : () {
-                    //               var email = formGroup.control("email").value;
-                    //               var password = formGroup
-                    //                   .control("password")
-                    //                   .value;
-                    //               debugPrint(
-                    //                 "Email: $email, Password: $password",
-                    //               );
-                    //               ref
-                    //                   .read(authNotifierProvider.notifier)
-                    //                   .signInWithEmailAndPassword(
-                    //                     email,
-                    //                     password,
-                    //                   );
 
-                    //               context.go("/home");
-                    //               //formGroup.reset();
-                    //             },
-                    //     );
-                    //   },
-                    // ),
                     // زر تسجيل الدخول العادي
                     ReactiveFormConsumer(
                       builder: (context, formGroup, child) {
@@ -341,98 +304,6 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                         ),
                         const Gap(10),
 
-                        // Tooltip(
-                        //   message: "تسجيل الدخول عبر Gmail",
-                        //   child: InkWell(
-                        //     onTap: () async {
-                        //       if (!mounted) return;
-
-                        //       try {
-                        //         // إنشاء GoogleSignIn مع اختيار الحساب
-                        //         final googleSignIn = GoogleSignIn(
-                        //           scopes: ['email', 'profile'],
-                        //           signInOption: SignInOption.standard,
-                        //         );
-
-                        //         // إلغاء أي تسجيل دخول سابق لضمان اختيار الحساب
-                        //         await googleSignIn.signOut();
-
-                        //         // اختيار الحساب
-                        //         final googleUser = await googleSignIn.signIn();
-                        //         if (googleUser == null) {
-                        //           if (!mounted) return;
-                        //           ScaffoldMessenger.of(context).showSnackBar(
-                        //             const SnackBar(
-                        //               content: Text(
-                        //                 "تم إلغاء تسجيل الدخول بواسطة المستخدم",
-                        //               ),
-                        //             ),
-                        //           );
-                        //           return;
-                        //         }
-
-                        //         final googleAuth =
-                        //             await googleUser.authentication;
-
-                        //         final credential =
-                        //             GoogleAuthProvider.credential(
-                        //               idToken: googleAuth.idToken,
-                        //               accessToken: googleAuth.accessToken,
-                        //             );
-
-                        //         final userCredential = await FirebaseAuth
-                        //             .instance
-                        //             .signInWithCredential(credential);
-
-                        //         final user = userCredential.user;
-                        //         if (user == null) return;
-
-                        //         if (!mounted) return;
-                        //         final appUserService = ref.read(
-                        //           appUserServiceProvider,
-                        //         );
-
-                        //         var existing = await appUserService
-                        //             .getAccountByEmail(user.email!);
-                        //         if (existing == null) {
-                        //           existing = await appUserService.createAccount(
-                        //             AppUser(
-                        //               id: user.uid,
-                        //               email: user.email!,
-                        //               name: user.displayName ?? "",
-                        //               city: 'homs',
-                        //             ),
-                        //           );
-                        //         }
-
-                        //         // خزّن userId
-                        //         final prefs =
-                        //             await SharedPreferences.getInstance();
-                        //         await prefs.setString("userId", existing.id!);
-
-                        //         // حدّث AuthNotifier
-                        //         ref.read(authNotifierProvider.notifier).state =
-                        //             existing;
-
-                        //         // تنقل مباشرة إلى صفحة الحجوزات
-                        //         if (mounted) context.go("/reservations");
-                        //       } catch (e) {
-                        //         if (!mounted) return;
-                        //         print("Error during Google Sign-In: $e");
-                        //         ScaffoldMessenger.of(context).showSnackBar(
-                        //           const SnackBar(
-                        //             content: Text("حدث خطأ أثناء تسجيل الدخول"),
-                        //           ),
-                        //         );
-                        //       }
-                        //     },
-                        //     child: Image.asset(
-                        //       "assets/images/gmaill.png",
-                        //       height: 38,
-                        //       width: 38,
-                        //     ),
-                        //   ),
-                        // ),
                         Tooltip(
                           message: "تسجيل الدخول عبر Gmail",
                           child: InkWell(
@@ -564,7 +435,7 @@ class _MainScreenState extends ConsumerState<MainScreen> {
                       ],
                     ),
                     Gap(12),
-                    Text("Develpoved by Gh.AlS version: 1.2.0+5"),
+                    Text("Develpoved by Gh.AlS on: 2.2.0+5"),
                   ],
                 ),
               ),
